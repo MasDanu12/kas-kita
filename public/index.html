@@ -230,7 +230,6 @@
         <div class="org-name" id="header-org-name">Organisasi</div>
         <h1 id="header-title">Beranda</h1>
       </div>
-      <button class="btn-outline btn-small" style="background:rgba(255,255,255,0.15);color:#fff;border-color:rgba(255,255,255,0.3)" onclick="openSwitchOrg()">Ganti</button>
     </div>
   </div>
 
@@ -368,26 +367,45 @@
   <!-- ---------- TAB: PROFIL ---------- -->
   <div id="tab-content-profil" class="tab-content hidden">
     <div class="container">
+
       <div class="card">
-        <h3 style="font-size:15px">Akun</h3>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:48px;height:48px;border-radius:50%;background:var(--primary-light);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:22px">👤</div>
+          <div style="min-width:0">
+            <h3 style="font-size:16px" id="profil-header-nama">Pengguna</h3>
+            <div style="font-size:13px;color:var(--text-muted)" id="profil-header-email">-</div>
+          </div>
+        </div>
+        <button class="btn-secondary" style="margin-top:14px" onclick="document.getElementById('profil-nama').focus()">Edit Profil</button>
+      </div>
+
+      <div class="card">
+        <h3 style="font-size:15px">Data Profil</h3>
         <label style="margin-top:8px">Nama</label>
         <input type="text" id="profil-nama">
+        <label>Email</label>
+        <input type="email" id="profil-email" readonly style="opacity:.75">
         <button class="btn-secondary" style="margin-top:10px" onclick="updateProfil()">Simpan Nama</button>
       </div>
+
       <div class="card">
-        <h3 style="font-size:15px">Ubah Password</h3>
+        <h3 style="font-size:15px">Organisasi Aktif</h3>
+        <p style="font-size:14px;font-weight:600;margin:8px 0 2px" id="profil-org-nama">-</p>
+        <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px">Kode undangan</div>
+        <div class="code-box" id="profil-invite-code">-</div>
+        <button class="btn-secondary" style="margin-top:12px" onclick="openSwitchOrg()">Ganti Organisasi</button>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:8px;text-align:center">Pergantian organisasi hanya tersedia dari Profil.</div>
+      </div>
+
+      <div class="card">
+        <h3 style="font-size:15px">Keamanan Akun</h3>
         <label style="margin-top:8px">Password Lama</label>
         <input type="password" id="pw-lama">
         <label>Password Baru</label>
         <input type="password" id="pw-baru">
         <button class="btn-secondary" style="margin-top:10px" onclick="changePassword()">Ubah Password</button>
       </div>
-      <div class="card">
-        <h3 style="font-size:15px">Organisasi Aktif</h3>
-        <p style="font-size:14px" id="profil-org-nama">-</p>
-        <label style="margin-top:4px">Kode Undangan (bagikan ke admin lain)</label>
-        <div class="code-box" id="profil-invite-code">-</div>
-      </div>
+
       <div class="card">
         <h3 style="font-size:15px">Tampilan</h3>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
@@ -395,6 +413,15 @@
           <input type="checkbox" id="dark-toggle" onchange="toggleDark()" style="width:auto">
         </div>
       </div>
+
+      <div class="card">
+        <h3 style="font-size:15px">Bantuan & Tentang</h3>
+        <div style="font-size:13px;color:var(--text-muted);line-height:1.6;margin-top:8px">
+          Kas Kita digunakan untuk mencatat dan memantau kas organisasi secara rapi dan transparan.
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:10px">Versi aplikasi: 1.0</div>
+      </div>
+
       <button class="btn-danger" style="width:100%" onclick="logout()">Keluar Akun</button>
     </div>
   </div>
@@ -426,7 +453,36 @@ let state = {
   org: JSON.parse(localStorage.getItem('kk_org') || 'null'),
   kategori: [],
   anggotaCache: [],
+  orgVersion: 0,
 };
+
+// Menandai apakah hasil request masih berasal dari organisasi yang sedang aktif.
+// Ini mencegah response organisasi lama menimpa tampilan setelah user berpindah organisasi.
+function currentOrgId() { return state.org?.id || null; }
+function orgRequestIsCurrent(orgId, version) {
+  return !!state.org && currentOrgId() === orgId && state.orgVersion === version;
+}
+function resetOrgScopedState() {
+  state.kategori = [];
+  state.anggotaCache = [];
+  lastLaporanBulanan = null;
+  lastLaporanTahunan = null;
+  const defaults = {
+    'home-saldo': 'Rp0', 'home-masuk': 'Rp0', 'home-keluar': 'Rp0',
+    'home-lunas': '0', 'home-menunggak': '0',
+    'iuran-nominal-display': 'Rp0', 'iuran-tempo-display': '-',
+    'iuran-lunas-count': '0', 'iuran-menunggak-count': '0',
+    'lb-masuk': 'Rp0', 'lb-keluar': 'Rp0', 'lb-saldo': 'Rp0', 'lb-jumlah': '0',
+    'lt-masuk': 'Rp0', 'lt-keluar': 'Rp0', 'lt-saldo': 'Rp0', 'lt-jumlah': '0'
+  };
+  Object.entries(defaults).forEach(([id, value]) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  });
+  ['home-recent-list','anggota-list','transaksi-list','iuran-status-list','lb-donut-holder','lb-kategori-legend','lt-bar-holder']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = ''; });
+}
+
 
 function fmtRupiah(n) {
   n = Number(n) || 0;
@@ -496,7 +552,7 @@ function logout() {
   localStorage.removeItem('kk_token');
   localStorage.removeItem('kk_user');
   localStorage.removeItem('kk_org');
-  state = { token: null, user: null, org: null, kategori: [], anggotaCache: [] };
+  state = { token: null, user: null, org: null, kategori: [], anggotaCache: [], orgVersion: 0 };
   closeModal();
   document.getElementById('view-app').classList.add('hidden');
   document.getElementById('view-org').classList.add('hidden');
@@ -537,10 +593,15 @@ async function loadOrgList() {
     if (!stillExists) state.org = null;
   }
 }
-function selectOrg(org) {
+async function selectOrg(org) {
+  if (!org?.id) return toast('Organisasi tidak valid');
+  // Naikkan versi setiap kali organisasi berganti agar response request lama diabaikan.
+  state.orgVersion += 1;
   state.org = org;
   localStorage.setItem('kk_org', JSON.stringify(org));
-  enterApp();
+  resetOrgScopedState();
+  closeModal();
+  await enterApp();
 }
 function switchOrgTab(which) {
   document.getElementById('tab-org-create').classList.toggle('active', which === 'create');
@@ -566,20 +627,30 @@ async function doJoinOrg() {
     toast('Berhasil gabung organisasi!');
   } catch (e) { toast(e.message); }
 }
-function openSwitchOrg() {
+async function openSwitchOrg() {
+  // Hentikan tampilan organisasi lama sebelum layar pemilihan dibuka.
+  resetOrgScopedState();
   document.getElementById('view-app').classList.add('hidden');
   document.getElementById('view-org').classList.remove('hidden');
-  loadOrgList();
+  try {
+    await loadOrgList();
+  } catch (e) { toast(e.message); }
 }
 
 // ============================================================
 // APP ENTRY & TABS
 // ============================================================
 async function enterApp() {
+  if (!state.org) return;
+  const orgId = currentOrgId();
+  const version = state.orgVersion;
   document.getElementById('view-org').classList.add('hidden');
   document.getElementById('view-app').classList.remove('hidden');
   document.getElementById('header-org-name').textContent = state.org.nama;
   document.getElementById('profil-nama').value = state.user?.nama || '';
+  document.getElementById('profil-email').value = state.user?.email || '';
+  document.getElementById('profil-header-nama').textContent = state.user?.nama || 'Pengguna';
+  document.getElementById('profil-header-email').textContent = state.user?.email || '-';
   document.getElementById('profil-org-nama').textContent = state.org.nama;
   document.getElementById('profil-invite-code').textContent = state.org.invite_code;
   const now = new Date();
@@ -589,9 +660,9 @@ async function enterApp() {
   if (localStorage.getItem('kk_dark') === '1') { document.body.classList.add('dark'); document.getElementById('dark-toggle').checked = true; }
   try {
     const kat = await api('/api/kategori');
-    state.kategori = kat.kategori;
+    if (orgRequestIsCurrent(orgId, version)) state.kategori = kat.kategori;
   } catch (e) { /* ignore */ }
-  switchTab('beranda');
+  if (orgRequestIsCurrent(orgId, version)) switchTab('beranda');
 }
 
 const TAB_TITLES = { beranda: 'Beranda', anggota: 'Anggota', transaksi: 'Catatan Kas', iuran: 'Iuran', laporan: 'Laporan', profil: 'Profil' };
@@ -629,6 +700,8 @@ function closeModal() { document.getElementById('modal-root').innerHTML = ''; }
 // BERANDA
 // ============================================================
 async function loadBeranda() {
+  const orgId = currentOrgId(), version = state.orgVersion;
+  if (!orgId) return;
   try {
     const bulan = new Date().toISOString().slice(0, 7);
     const [lap, iuran, trx] = await Promise.all([
@@ -636,6 +709,7 @@ async function loadBeranda() {
       api('/api/iuran/status?periode=' + bulan),
       api('/api/transaksi'),
     ]);
+    if (!orgRequestIsCurrent(orgId, version)) return;
     document.getElementById('home-saldo').textContent = fmtRupiah(lap.saldo_bersih);
     document.getElementById('home-masuk').textContent = fmtRupiah(lap.total_masuk);
     document.getElementById('home-keluar').textContent = fmtRupiah(lap.total_keluar);
@@ -651,8 +725,11 @@ async function loadBeranda() {
 // ANGGOTA
 // ============================================================
 async function loadAnggota() {
+  const orgId = currentOrgId(), version = state.orgVersion;
+  if (!orgId) return;
   try {
     const data = await api('/api/anggota');
+    if (!orgRequestIsCurrent(orgId, version)) return;
     state.anggotaCache = data.anggota;
     const el = document.getElementById('anggota-list');
     el.innerHTML = data.anggota.length ? data.anggota.map((a) => `
@@ -714,8 +791,11 @@ function renderTrxItem(t) {
     </div>`;
 }
 async function loadTransaksi() {
+  const orgId = currentOrgId(), version = state.orgVersion;
+  if (!orgId) return;
   try {
     const data = await api('/api/transaksi');
+    if (!orgRequestIsCurrent(orgId, version)) return;
     const el = document.getElementById('transaksi-list');
     el.innerHTML = data.transaksi.length ? data.transaksi.map((t) => `
       <div>
@@ -768,8 +848,11 @@ async function saveTransaksi(tipe) {
 // IURAN
 // ============================================================
 async function loadIuranSettings() {
+  const orgId = currentOrgId(), version = state.orgVersion;
+  if (!orgId) return;
   try {
     const data = await api('/api/iuran-settings');
+    if (!orgRequestIsCurrent(orgId, version)) return;
     document.getElementById('iuran-nominal-display').textContent = fmtRupiah(data.settings?.nominal || 0);
     document.getElementById('iuran-tempo-display').textContent = data.settings?.tanggal_jatuh_tempo || '-';
   } catch (e) { toast(e.message); }
@@ -797,9 +880,12 @@ async function saveIuranSettings() {
   } catch (e) { toast(e.message); }
 }
 async function loadIuranStatus() {
+  const orgId = currentOrgId(), version = state.orgVersion;
+  if (!orgId) return;
   try {
     const periode = document.getElementById('iuran-periode-filter').value;
     const data = await api('/api/iuran/status?periode=' + periode);
+    if (!orgRequestIsCurrent(orgId, version)) return;
     document.getElementById('iuran-lunas-count').textContent = data.lunas;
     document.getElementById('iuran-menunggak-count').textContent = data.menunggak;
     const el = document.getElementById('iuran-status-list');
@@ -877,9 +963,12 @@ function switchLaporanTab(which) {
 }
 let lastLaporanBulanan = null, lastLaporanTahunan = null;
 async function loadLaporanBulanan() {
+  const orgId = currentOrgId(), version = state.orgVersion;
+  if (!orgId) return;
   try {
     const bulan = document.getElementById('laporan-bulan-filter').value;
     const data = await api('/api/laporan/bulanan?bulan=' + bulan);
+    if (!orgRequestIsCurrent(orgId, version)) return;
     lastLaporanBulanan = data;
     document.getElementById('lb-masuk').textContent = fmtRupiah(data.total_masuk);
     document.getElementById('lb-keluar').textContent = fmtRupiah(data.total_keluar);
@@ -889,9 +978,12 @@ async function loadLaporanBulanan() {
   } catch (e) { toast(e.message); }
 }
 async function loadLaporanTahunan() {
+  const orgId = currentOrgId(), version = state.orgVersion;
+  if (!orgId) return;
   try {
     const tahun = document.getElementById('laporan-tahun-filter').value;
     const data = await api('/api/laporan/tahunan?tahun=' + tahun);
+    if (!orgRequestIsCurrent(orgId, version)) return;
     lastLaporanTahunan = data;
     document.getElementById('lt-masuk').textContent = fmtRupiah(data.total_masuk);
     document.getElementById('lt-keluar').textContent = fmtRupiah(data.total_keluar);
@@ -1113,6 +1205,8 @@ async function updateProfil() {
   try {
     await api('/api/profil', { method: 'PUT', body: { nama }, needOrg: false });
     state.user.nama = nama; localStorage.setItem('kk_user', JSON.stringify(state.user));
+    const headerNama = document.getElementById('profil-header-nama');
+    if (headerNama) headerNama.textContent = nama;
     toast('Nama berhasil diperbarui');
   } catch (e) { toast(e.message); }
 }
