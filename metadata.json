@@ -1,0 +1,6 @@
+{
+  "name": "Kas Kita",
+  "description": "Aplikasi Kas Organisasi, rapi & transparan untuk pencatatan buku kas, anggota, dan iuran bulanan.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
