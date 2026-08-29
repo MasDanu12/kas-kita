@@ -1,6 +1,6 @@
 // Kas Kita - Service Worker
 // NAIKKAN VERSI INI SETIAP KALI DEPLOY supaya cache lama otomatis dibuang dan pengguna dapat versi terbaru.
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v4';
 const CACHE_NAME = 'kas-kita-' + CACHE_VERSION;
 const SHELL_FILES = ['/manifest.json', '/icon.png'];
 

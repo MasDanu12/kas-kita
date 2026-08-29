@@ -23,12 +23,65 @@
     background:var(--bg); color:var(--text); max-width:480px; margin:0 auto; min-height:100vh; padding-bottom:76px; }
   h1,h2,h3 { margin:0 0 4px; }
   .hidden { display:none !important; }
-  .app-header { background:var(--primary); color:#fff; padding:18px 16px 16px; border-radius:0 0 20px 20px; box-shadow:var(--shadow); }
+  .app-header { background:var(--primary); color:#fff; padding:20px 16px 38px; border-radius:0 0 20px 20px; box-shadow:var(--shadow); }
   .app-header .org-name { font-size:13px; opacity:0.85; }
-  .app-header h1 { font-size:20px; }
+  .app-header h1 { font-size:20px; margin-bottom:0; }
   .container { padding:16px; }
   .card { background:var(--card); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); margin-bottom:14px; border:1px solid var(--border); }
-  .balance-card { background:linear-gradient(135deg,var(--primary),#17694F); color:#fff; border-radius:var(--radius); padding:18px; margin:-30px 16px 16px; box-shadow:var(--shadow); position:relative; z-index:2; }
+  .balance-card { background:linear-gradient(135deg,var(--primary),#17694F); color:#fff; border-radius:var(--radius); padding:18px; margin:-22px 16px 16px; box-shadow:var(--shadow); position:relative; z-index:2; }
+  .kas-header-card { background:linear-gradient(135deg,var(--primary),#17694F); color:#fff; border-radius:var(--radius); padding:18px; margin:-22px 16px 16px; box-shadow:var(--shadow); position:relative; z-index:2; }
+  .kas-header-card .label { font-size:12px; opacity:0.85; letter-spacing:0.5px; }
+  .kas-header-card .amount { font-size:30px; font-weight:800; margin:6px 0 2px; font-variant-numeric:tabular-nums; }
+  .kas-header-card .sub { font-size:12px; opacity:0.85; }
+  .ringkasan-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .ringkasan-item { background:var(--bg); border-radius:12px; padding:12px; }
+  .ringkasan-item .lbl { font-size:11.5px; color:var(--text-muted); display:flex; align-items:center; gap:5px; }
+  .ringkasan-item .val { font-size:15px; font-weight:700; margin-top:3px; }
+  .selisih-row { display:flex; gap:8px; margin-top:2px; }
+  .selisih-box { flex:1; background:var(--bg); border-radius:12px; padding:11px; text-align:center; }
+  .selisih-box .lbl { font-size:11px; color:var(--text-muted); }
+  .selisih-box .val { font-size:14px; font-weight:700; margin-top:3px; }
+  .period-pills { display:flex; gap:6px; overflow-x:auto; margin-bottom:12px; padding-bottom:2px; }
+  .period-pill { flex:0 0 auto; background:var(--bg); color:var(--text-muted); border-radius:20px; padding:7px 14px; font-size:12.5px; font-weight:600; white-space:nowrap; }
+  .period-pill.active { background:var(--primary); color:#fff; }
+  .action-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .action-btn { display:flex; align-items:center; justify-content:center; gap:7px; padding:14px; border-radius:14px; font-size:14.5px; font-weight:700; transition:transform .08s ease; }
+  .action-btn:active { transform:scale(0.97); }
+  .action-btn-masuk { background:var(--masuk); color:#fff; }
+  .action-btn-keluar { background:#E8827A; color:#fff; }
+  .action-btn-netral { background:var(--primary-light); color:var(--primary); }
+  .segmented { display:flex; background:var(--bg); border-radius:12px; padding:3px; gap:2px; overflow-x:auto; margin-bottom:12px; }
+  .segmented button { flex:0 0 auto; background:transparent; color:var(--text-muted); font-size:12.5px; padding:8px 13px; border-radius:9px; white-space:nowrap; font-weight:600; }
+  .segmented button.active { background:var(--card); color:var(--text); box-shadow:var(--shadow); }
+  .trx-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:13px 14px; margin-bottom:10px; }
+  .trx-card .trx-top { display:flex; justify-content:space-between; align-items:flex-start; }
+  .trx-card .trx-title { font-weight:700; font-size:14.5px; }
+  .trx-card .trx-sub { font-size:12px; color:var(--text-muted); margin-top:2px; }
+  .trx-card .trx-amount { font-weight:800; font-size:15px; white-space:nowrap; }
+  .trx-card .trx-actions { display:flex; gap:14px; justify-content:flex-end; margin-top:8px; }
+  .trx-card .trx-actions a { font-size:12px; font-weight:600; }
+  .badge-pill { display:inline-block; font-size:10.5px; padding:2px 9px; border-radius:20px; font-weight:600; margin-top:5px; }
+  .badge-iuran { background:#FBF2DF; color:var(--sebagian); }
+  .badge-transfer-pill { background:#E3F0F7; color:#2980B9; }
+  .badge-penyesuaian-pill { background:#F0EAF7; color:#8E44AD; }
+  .empty-illustration { text-align:center; padding:36px 14px; color:var(--text-muted); }
+  .empty-illustration .emoji { font-size:38px; margin-bottom:8px; }
+  .empty-illustration .title { font-weight:700; color:var(--text); font-size:14.5px; margin-bottom:4px; }
+  .empty-illustration .sub { font-size:12.5px; line-height:1.5; }
+  .iuran-header-card { background:linear-gradient(135deg,var(--primary),#17694F); color:#fff; border-radius:var(--radius); padding:18px; margin:-22px 16px 16px; box-shadow:var(--shadow); position:relative; z-index:2; }
+  .iuran-header-card .label { font-size:12px; opacity:0.85; }
+  .iuran-header-card .amount { font-size:28px; font-weight:800; margin:6px 0 10px; font-variant-numeric:tabular-nums; }
+  .progress-track { background:rgba(255,255,255,0.25); border-radius:20px; height:9px; overflow:hidden; }
+  .progress-track.light { background:var(--bg); }
+  .progress-fill { height:100%; border-radius:20px; background:#fff; transition:width .3s ease; }
+  .progress-fill.dark-fill { background:var(--masuk); }
+  .progress-caption { display:flex; justify-content:space-between; font-size:11.5px; margin-top:6px; opacity:0.9; }
+  .anggota-progress-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:13px 14px; margin-bottom:10px; }
+  .anggota-progress-card .ap-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .anggota-progress-card .ap-nama { font-weight:700; font-size:14.5px; }
+  .anggota-progress-card .ap-sub { font-size:11.5px; color:var(--text-muted); margin-top:2px; }
+  .anggota-progress-card .ap-track { background:var(--bg); border-radius:20px; height:7px; overflow:hidden; margin-top:8px; }
+  .anggota-progress-card .ap-fill { height:100%; border-radius:20px; }
   .balance-card .label { font-size:12px; opacity:0.8; }
   .balance-card .amount { font-size:26px; font-weight:700; margin:4px 0; font-variant-numeric:tabular-nums; }
   .balance-row { display:flex; gap:10px; margin-top:10px; }
@@ -185,17 +238,51 @@
 
   <!-- KAS -->
   <div id="tab-content-kas" class="tab-content hidden">
-    <div class="container">
-      <div class="row">
-        <button class="btn-primary" onclick="openTransaksiModal('masuk')">+ Masuk</button>
-        <button class="btn-danger" style="width:100%" onclick="openTransaksiModal('keluar')">+ Keluar</button>
+    <div class="kas-header-card">
+      <div class="label">SALDO KAS</div>
+      <div class="amount" id="kas-saldo">Rp0</div>
+      <div class="sub">Saldo saat ini</div>
+    </div>
+    <div class="container" style="padding-top:0">
+
+      <div class="card">
+        <h3 style="font-size:15px;margin-bottom:12px">Ringkasan Keuangan</h3>
+        <div class="ringkasan-grid">
+          <div class="ringkasan-item"><div class="lbl">💰 Saldo Kas</div><div class="val" id="kr-saldo">Rp0</div></div>
+          <div class="ringkasan-item"><div class="lbl">📥 Total Masuk</div><div class="val" style="color:var(--masuk)" id="kr-masuk">+Rp0</div></div>
+          <div class="ringkasan-item"><div class="lbl">📤 Total Keluar</div><div class="val" style="color:var(--keluar)" id="kr-keluar">-Rp0</div></div>
+          <div class="ringkasan-item"><div class="lbl">🧾 Jumlah Transaksi</div><div class="val" id="kr-jumlah">0 transaksi</div></div>
+        </div>
       </div>
-      <div class="row" style="margin-top:8px">
-        <button class="btn-secondary" onclick="openTransaksiModal('transfer')">🔁 Transfer</button>
-        <button class="btn-secondary" onclick="openTransaksiModal('penyesuaian')">⚖️ Penyesuaian</button>
+
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <h3 style="font-size:15px">Grafik Ringkasan Keuangan</h3>
+          <a class="link-text" style="font-size:12px" onclick="openAkunModal()">⚙️ Kelola Akun</a>
+        </div>
+        <div class="period-pills">
+          <button class="period-pill active" data-p="7" onclick="setGrafikPeriode('7')">7 Hari</button>
+          <button class="period-pill" data-p="30" onclick="setGrafikPeriode('30')">30 Hari</button>
+          <button class="period-pill" data-p="90" onclick="setGrafikPeriode('90')">3 Bulan</button>
+          <button class="period-pill" data-p="365" onclick="setGrafikPeriode('365')">1 Tahun</button>
+        </div>
+        <div id="kas-grafik-holder"></div>
+        <div class="selisih-row" style="margin-top:14px">
+          <div class="selisih-box"><div class="lbl">Total Masuk</div><div class="val" style="color:var(--masuk)" id="kg-masuk">+Rp0</div></div>
+          <div class="selisih-box"><div class="lbl">Total Keluar</div><div class="val" style="color:var(--keluar)" id="kg-keluar">-Rp0</div></div>
+          <div class="selisih-box"><div class="lbl">Selisih</div><div class="val" id="kg-selisih">Rp0</div></div>
+        </div>
       </div>
+
+      <div class="action-grid">
+        <button class="action-btn action-btn-masuk" onclick="openTransaksiModal('masuk')">+ Masuk</button>
+        <button class="action-btn action-btn-keluar" onclick="openTransaksiModal('keluar')">+ Keluar</button>
+        <button class="action-btn action-btn-netral" onclick="openTransaksiModal('transfer')">⇄ Transfer</button>
+        <button class="action-btn action-btn-netral" onclick="openTransaksiModal('penyesuaian')">⚖ Penyesuaian</button>
+      </div>
+
       <div class="card" style="margin-top:14px">
-        <div class="tabs-2" style="margin-bottom:10px">
+        <div class="segmented">
           <button class="kas-filter-btn active" data-f="" onclick="setKasFilter('')">Semua</button>
           <button class="kas-filter-btn" data-f="masuk" onclick="setKasFilter('masuk')">Masuk</button>
           <button class="kas-filter-btn" data-f="keluar" onclick="setKasFilter('keluar')">Keluar</button>
@@ -209,17 +296,26 @@
 
   <!-- IURAN -->
   <div id="tab-content-iuran" class="tab-content hidden">
-    <div class="container">
+    <div class="iuran-header-card">
+      <div class="label" id="iuran-nama-display">Iuran Bulanan</div>
+      <div class="amount" id="iuran-terkumpul-display">Rp0</div>
+      <div class="progress-track"><div class="progress-fill" id="iuran-progress-fill" style="width:0%"></div></div>
+      <div class="progress-caption">
+        <span id="iuran-progress-label">0 dari 0 anggota lunas</span>
+        <span id="iuran-progress-persen">0%</span>
+      </div>
+    </div>
+    <div class="container" style="padding-top:0">
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <h3 style="font-size:15px">Pengaturan Iuran</h3>
           <a class="link-text" style="font-size:12.5px" onclick="openIuranSettingsModal()">Ubah</a>
         </div>
-        <p style="margin:8px 0 0;font-size:14px" id="iuran-nama-display">Iuran Bulanan</p>
-        <p style="margin:2px 0 0;font-size:14px">Nominal: <b id="iuran-nominal-display">Rp0</b> / bulan</p>
+        <p style="margin:8px 0 0;font-size:14px">Nominal: <b id="iuran-nominal-display">Rp0</b> / bulan</p>
         <p style="margin:2px 0 0;font-size:14px">Mulai: <b id="iuran-mulai-display">-</b></p>
       </div>
       <button class="btn-primary" onclick="openIuranModal()">💳 Catat Pembayaran Iuran</button>
+
       <div class="card" style="margin-top:14px">
         <label style="margin-top:0">Pilih Periode</label>
         <input type="month" id="iuran-periode-filter" onchange="loadIuranStatus()">
@@ -230,12 +326,13 @@
           <div class="stat-box"><div class="num" id="iuran-tunggakan-jumlah" style="font-size:14px">Rp0</div><div class="lbl">Total Tunggakan</div></div>
         </div>
       </div>
+
       <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <h3 style="font-size:15px">Status per Anggota</h3>
           <a class="link-text" style="font-size:12.5px" onclick="downloadTunggakanPdf()">Unduh Laporan</a>
         </div>
-        <div id="iuran-status-list" style="margin-top:6px"></div>
+        <div id="iuran-status-list"></div>
       </div>
     </div>
   </div>
@@ -589,7 +686,10 @@ async function deleteAnggota(id) {
 function renderTrxItem(t) {
   const isIuran = t.sumber === 'iuran';
   let judul = t.kategori || (t.tipe === 'masuk' ? 'Pemasukan' : t.tipe === 'keluar' ? 'Pengeluaran' : t.tipe === 'transfer' ? 'Transfer' : 'Penyesuaian');
-  let badge = isIuran ? `<span class="badge badge-sebagian">Iuran</span>` : '';
+  let badgeHtml = '';
+  if (isIuran) badgeHtml = `<span class="badge-pill badge-iuran">Iuran</span>`;
+  else if (t.tipe === 'transfer') badgeHtml = `<span class="badge-pill badge-transfer-pill">Transfer</span>`;
+  else if (t.tipe === 'penyesuaian') badgeHtml = `<span class="badge-pill badge-penyesuaian-pill">Penyesuaian</span>`;
   let sub = t.tanggal;
   if (t.anggota_nama) sub += ' · ' + escapeHtml(t.anggota_nama);
   if (t.tipe === 'transfer') sub += ` · ${escapeHtml(t.akun_nama||'-')} → ${escapeHtml(t.akun_tujuan_nama||'-')}`;
@@ -597,11 +697,18 @@ function renderTrxItem(t) {
   const tandaJumlah = (t.tipe === 'masuk') ? '+' : (t.tipe === 'keluar') ? '-' : (t.tipe === 'penyesuaian' && t.jumlah < 0) ? '-' : (t.tipe==='penyesuaian' ? '+' : '');
   const kelasWarna = (t.tipe === 'masuk') ? 'amount-masuk' : (t.tipe === 'keluar') ? 'amount-keluar' : '';
   return `
-    <div class="list-item">
-      <div><div class="title">${escapeHtml(judul)} ${badge}</div><div class="sub">${sub}</div></div>
-      <div style="text-align:right">
-        <div class="${kelasWarna}">${tandaJumlah}${fmtRupiah(Math.abs(t.jumlah))}</div>
-        <a class="link-text" style="font-size:11.5px" onclick="downloadStrukPng('${t.id}')">Struk</a>
+    <div class="trx-card">
+      <div class="trx-top">
+        <div>
+          <div class="trx-title">${escapeHtml(judul)}</div>
+          <div class="trx-sub">${sub}</div>
+          ${badgeHtml}
+        </div>
+        <div class="trx-amount ${kelasWarna}">${tandaJumlah}${fmtRupiah(Math.abs(t.jumlah))}</div>
+      </div>
+      <div class="trx-actions">
+        ${t.sumber !== 'iuran' ? `<a class="link-text" onclick="deleteTransaksi('${t.id}')">Hapus</a>` : ''}
+        <a class="link-text" onclick="downloadStrukPng('${t.id}')">Struk</a>
       </div>
     </div>`;
 }
@@ -610,20 +717,100 @@ function setKasFilter(f) {
   document.querySelectorAll('.kas-filter-btn').forEach((b) => b.classList.toggle('active', b.dataset.f === f));
   loadKas();
 }
+let kasGrafikPeriode = '7';
+let kasTrxCache = [];
+function setGrafikPeriode(p) {
+  kasGrafikPeriode = p;
+  document.querySelectorAll('.period-pill').forEach((b) => b.classList.toggle('active', b.dataset.p === p));
+  renderKasGrafik();
+}
 async function loadKas() {
   const myEpoch = state.reqEpoch;
   try {
-    const q = state.kasFilter ? ('?tipe=' + state.kasFilter) : '';
-    const data = await api('/api/transaksi' + q);
+    const [semua, filtered, akunRes] = await Promise.all([
+      api('/api/transaksi'),
+      api('/api/transaksi' + (state.kasFilter ? ('?tipe=' + state.kasFilter) : '')),
+      api('/api/akun'),
+    ]);
     if (myEpoch !== state.reqEpoch) return;
+    state.akunList = akunRes.akun;
+    kasTrxCache = semua.transaksi;
+
+    // Saldo & ringkasan (all-time, dari data asli - bukan dummy)
+    const saldoTotal = state.akunList.reduce((a, ak) => a + ak.saldo, 0);
+    const totalMasuk = semua.transaksi.filter((t) => t.tipe === 'masuk').reduce((a, t) => a + t.jumlah, 0);
+    const totalKeluar = semua.transaksi.filter((t) => t.tipe === 'keluar').reduce((a, t) => a + t.jumlah, 0);
+    document.getElementById('kas-saldo').textContent = fmtRupiah(saldoTotal);
+    document.getElementById('kr-saldo').textContent = fmtRupiah(saldoTotal);
+    document.getElementById('kr-masuk').textContent = '+' + fmtRupiah(totalMasuk);
+    document.getElementById('kr-keluar').textContent = '-' + fmtRupiah(totalKeluar);
+    document.getElementById('kr-jumlah').textContent = semua.transaksi.length + ' transaksi';
+
+    renderKasGrafik();
+
     const el = document.getElementById('kas-list');
-    el.innerHTML = data.transaksi.length ? data.transaksi.map((t) => `
-      <div>${renderTrxItem(t)}
-        <div style="text-align:right;margin-top:-8px;margin-bottom:6px">
-          ${t.sumber !== 'iuran' ? `<a class="link-text" style="font-size:11.5px" onclick="deleteTransaksi('${t.id}')">Hapus</a>` : ''}
-        </div>
-      </div>`).join('') : '<div class="empty-state">Belum ada transaksi</div>';
+    el.innerHTML = filtered.transaksi.length ? filtered.transaksi.map(renderTrxItem).join('') : `
+      <div class="empty-illustration">
+        <div class="emoji">🧾</div>
+        <div class="title">Belum ada transaksi</div>
+        <div class="sub">Transaksi kas yang kamu tambahkan<br>akan muncul di sini.</div>
+      </div>`;
   } catch (e) { if (!isStaleError(e)) toast(e.message); }
+}
+function renderKasGrafik() {
+  const now = new Date();
+  const days = parseInt(kasGrafikPeriode);
+  const mulai = new Date(now); mulai.setDate(mulai.getDate() - (days - 1));
+  const mulaiStr = mulai.toISOString().slice(0,10);
+  const dalamPeriode = kasTrxCache.filter((t) => (t.tipe === 'masuk' || t.tipe === 'keluar') && t.tanggal >= mulaiStr);
+  const totalMasukP = dalamPeriode.filter((t) => t.tipe === 'masuk').reduce((a,t) => a + t.jumlah, 0);
+  const totalKeluarP = dalamPeriode.filter((t) => t.tipe === 'keluar').reduce((a,t) => a + t.jumlah, 0);
+  const selisih = totalMasukP - totalKeluarP;
+  document.getElementById('kg-masuk').textContent = '+' + fmtRupiah(totalMasukP);
+  document.getElementById('kg-keluar').textContent = '-' + fmtRupiah(totalKeluarP);
+  const selisihEl = document.getElementById('kg-selisih');
+  selisihEl.textContent = (selisih > 0 ? '+' : selisih < 0 ? '-' : '') + fmtRupiah(Math.abs(selisih));
+  selisihEl.style.color = selisih > 0 ? 'var(--masuk)' : selisih < 0 ? 'var(--keluar)' : 'var(--text-muted)';
+
+  const holder = document.getElementById('kas-grafik-holder');
+  if (dalamPeriode.length === 0) {
+    holder.innerHTML = `<div class="empty-illustration" style="padding:24px 10px"><div class="emoji">📊</div><div class="title">Belum ada data grafik</div><div class="sub">Tambahkan transaksi untuk melihat<br>ringkasan keuangan.</div></div>`;
+    return;
+  }
+  // Kelompokkan: <=31 hari per hari, <=180 per minggu, sisanya per bulan
+  const bucketKey = (tgl) => {
+    if (days <= 31) return tgl; // per hari YYYY-MM-DD
+    if (days <= 180) { const d = new Date(tgl); const onejan = new Date(d.getFullYear(),0,1); const week = Math.ceil((((d-onejan)/86400000)+onejan.getDay()+1)/7); return d.getFullYear()+'-W'+week; }
+    return tgl.slice(0,7); // per bulan
+  };
+  const buckets = {};
+  const order = [];
+  if (days <= 31) {
+    for (let i = 0; i < days; i++) { const d = new Date(mulai); d.setDate(d.getDate()+i); const key = d.toISOString().slice(0,10); buckets[key] = {masuk:0,keluar:0}; order.push(key); }
+  }
+  dalamPeriode.forEach((t) => {
+    const key = bucketKey(t.tanggal);
+    if (!buckets[key]) { buckets[key] = {masuk:0,keluar:0}; if (!order.includes(key)) order.push(key); }
+    buckets[key][t.tipe] += t.jumlah;
+  });
+  if (days > 31) order.sort();
+  const maxVal = Math.max(1, ...order.flatMap((k) => [buckets[k].masuk, buckets[k].keluar]));
+  const barW = order.length > 20 ? 4 : order.length > 10 ? 6 : 9;
+  holder.innerHTML = `<div style="display:flex;align-items:flex-end;gap:${order.length>20?1:3}px;height:130px;overflow-x:auto;padding-bottom:2px">
+    ${order.map((k) => {
+      const hM = Math.round((buckets[k].masuk/maxVal)*105), hK = Math.round((buckets[k].keluar/maxVal)*105);
+      return `<div style="flex:0 0 auto;text-align:center;min-width:${barW*2+3}px">
+        <div style="display:flex;align-items:flex-end;justify-content:center;gap:1.5px;height:105px">
+          <div style="width:${barW}px;height:${hM}px;background:var(--masuk);border-radius:2px 2px 0 0"></div>
+          <div style="width:${barW}px;height:${hK}px;background:#E8827A;border-radius:2px 2px 0 0"></div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>
+  <div style="display:flex;gap:14px;justify-content:center;margin-top:8px;font-size:11.5px">
+    <span><span style="display:inline-block;width:8px;height:8px;background:var(--masuk);border-radius:2px;margin-right:4px"></span>Pemasukan</span>
+    <span><span style="display:inline-block;width:8px;height:8px;background:#E8827A;border-radius:2px;margin-right:4px"></span>Pengeluaran</span>
+  </div>`;
 }
 async function deleteTransaksi(id) {
   if (!confirm('Hapus transaksi ini?')) return;
@@ -632,6 +819,51 @@ async function deleteTransaksi(id) {
 }
 function akunOptions(selectedId) {
   return state.akunList.map((a) => `<option value="${a.id}" ${a.id === selectedId ? 'selected' : ''}>${escapeHtml(a.nama)} (${fmtRupiah(a.saldo)})</option>`).join('');
+}
+
+// ---- Kelola Akun (tambah/edit) ----
+function openAkunModal() {
+  openModal(`
+    <h3>Kelola Akun</h3>
+    <div id="akun-list-modal">${renderAkunListModal()}</div>
+    <button class="btn-primary" style="margin-top:14px" onclick="openAkunFormModal()">+ Tambah Akun</button>
+  `);
+}
+function renderAkunListModal() {
+  return state.akunList.map((a) => `
+    <div class="list-item">
+      <div><div class="title">${escapeHtml(a.nama)}</div><div class="sub">Saldo awal: ${fmtRupiah(a.saldo_awal)} · Saldo sekarang: ${fmtRupiah(a.saldo)}</div></div>
+      <button class="btn-outline btn-small" onclick='openAkunFormModal(${JSON.stringify({id:a.id,nama:a.nama,saldo_awal:a.saldo_awal})})'>Edit</button>
+    </div>`).join('');
+}
+function openAkunFormModal(a) {
+  const editing = !!a;
+  openModal(`
+    <h3>${editing ? 'Edit' : 'Tambah'} Akun</h3>
+    <label>Nama Akun</label><input id="m-akun-nama" placeholder="Contoh: Bank BCA, Kas Tunai" value="${editing ? escapeHtml(a.nama) : ''}">
+    <label>Saldo Awal (Rp)</label><input type="number" id="m-akun-saldo" value="${editing ? a.saldo_awal : 0}">
+    <button class="btn-primary" style="margin-top:16px" onclick="saveAkun(${editing ? `'${a.id}'` : 'null'})">Simpan</button>
+    ${editing ? `<button class="btn-danger" style="width:100%;margin-top:8px" onclick="deleteAkun('${a.id}')">Nonaktifkan Akun</button>` : ''}
+  `);
+}
+async function saveAkun(id) {
+  const nama = document.getElementById('m-akun-nama').value.trim();
+  const saldo_awal = parseFloat(document.getElementById('m-akun-saldo').value) || 0;
+  if (!nama) return toast('Nama akun wajib diisi');
+  try {
+    if (id) await api('/api/akun/' + id, { method: 'PUT', body: { nama, saldo_awal } });
+    else await api('/api/akun', { method: 'POST', body: { nama, saldo_awal } });
+    const akunRes = await api('/api/akun'); state.akunList = akunRes.akun;
+    toast('Akun tersimpan'); openAkunModal(); loadKas();
+  } catch (e) { if (!isStaleError(e)) toast(e.message); }
+}
+async function deleteAkun(id) {
+  if (!confirm('Nonaktifkan akun ini? Riwayat transaksinya tetap tersimpan.')) return;
+  try {
+    await api('/api/akun/' + id, { method: 'DELETE' });
+    const akunRes = await api('/api/akun'); state.akunList = akunRes.akun;
+    toast('Akun dinonaktifkan'); openAkunModal(); loadKas();
+  } catch (e) { if (!isStaleError(e)) toast(e.message); }
 }
 function openTransaksiModal(tipe) {
   const defaultAkun = state.akunList[0]?.id;
@@ -733,15 +965,43 @@ async function loadIuranStatus() {
     document.getElementById('iuran-sebagian-count').textContent = data.sebagian;
     document.getElementById('iuran-menunggak-count').textContent = data.menunggak;
     document.getElementById('iuran-tunggakan-jumlah').textContent = fmtRupiah(data.tunggakan);
-    const badgeFor = (s) => s === 'lunas' ? 'badge-lunas' : s === 'sebagian' ? 'badge-sebagian' : s === 'menunggak' || s === 'belum_bayar' ? 'badge-menunggak' : 'badge-netral';
+
+    // Header ala "Family Circle": total terkumpul + progress bar keseluruhan
+    document.getElementById('iuran-terkumpul-display').textContent = fmtRupiah(data.terkumpul);
+    const dikenakan = data.status.filter((s) => s.status !== 'tidak_dikenakan').length;
+    const persen = dikenakan > 0 ? Math.round((data.lunas / dikenakan) * 100) : 0;
+    document.getElementById('iuran-progress-fill').style.width = persen + '%';
+    document.getElementById('iuran-progress-label').textContent = `${data.lunas} dari ${dikenakan} anggota lunas`;
+    document.getElementById('iuran-progress-persen').textContent = persen + '%';
+
+    const warnaFor = (s) => s === 'lunas' ? 'var(--masuk)' : s === 'sebagian' ? 'var(--sebagian)' : s === 'belum_bayar' ? 'var(--keluar)' : 'var(--text-muted)';
+    const badgeFor = (s) => s === 'lunas' ? 'badge-lunas' : s === 'sebagian' ? 'badge-sebagian' : s === 'belum_bayar' ? 'badge-menunggak' : 'badge-netral';
     const labelFor = (s) => ({ lunas:'Lunas', sebagian:'Sebagian', belum_bayar:'Belum Bayar', tidak_dikenakan:'Tidak Dikenakan' }[s] || s);
-    document.getElementById('iuran-status-list').innerHTML = data.status.length ? data.status.map((s) => `
-      <div class="list-item">
-        <div><div class="title">${escapeHtml(s.nama)}</div>
-          <div class="sub">${s.status === 'tidak_dikenakan' ? 'Belum jadi kewajiban periode ini' : `Dibayar ${fmtRupiah(s.dibayar)} / ${fmtRupiah(s.wajib)}${s.lunas_sampai ? ' · Lunas s/d ' + s.lunas_sampai : ''}`}</div></div>
-        <span class="badge ${badgeFor(s.status)}">${labelFor(s.status)}</span>
-      </div>`).join('') : '<div class="empty-state">Belum ada anggota aktif</div>';
+    document.getElementById('iuran-status-list').innerHTML = data.status.length ? data.status.map((s) => {
+      const pct = s.status === 'tidak_dikenakan' ? 0 : Math.min(100, Math.round((s.dibayar / s.wajib) * 100));
+      return `
+      <div class="anggota-progress-card" onclick="openRiwayatIuranModal('${s.anggota_id}', ${JSON.stringify(s.nama)})">
+        <div class="ap-top">
+          <div><div class="ap-nama">${escapeHtml(s.nama)}</div>
+            <div class="ap-sub">${s.status === 'tidak_dikenakan' ? 'Belum jadi kewajiban periode ini' : `${fmtRupiah(s.dibayar)} / ${fmtRupiah(s.wajib)}${s.lunas_sampai ? ' · Lunas s/d ' + s.lunas_sampai : ''}`}</div></div>
+          <span class="badge ${badgeFor(s.status)}">${labelFor(s.status)}</span>
+        </div>
+        <div class="ap-track"><div class="ap-fill" style="width:${pct}%;background:${warnaFor(s.status)}"></div></div>
+      </div>`;
+    }).join('') : '<div class="empty-illustration"><div class="emoji">👥</div><div class="title">Belum ada anggota aktif</div><div class="sub">Tambahkan anggota dulu di menu Anggota.</div></div>';
   } catch (e) { if (!isStaleError(e)) toast(e.message); }
+}
+async function openRiwayatIuranModal(anggotaId, nama) {
+  openModal(`<h3>Riwayat Iuran</h3><p style="font-size:13.5px;color:var(--text-muted);margin-top:-6px">${escapeHtml(nama)}</p><div id="riwayat-iuran-body" style="margin-top:10px">Memuat...</div>`);
+  try {
+    const data = await api('/api/iuran/riwayat/' + anggotaId);
+    const body = document.getElementById('riwayat-iuran-body');
+    body.innerHTML = data.riwayat.length ? data.riwayat.map((r) => `
+      <div class="list-item">
+        <div><div class="title">${fmtRupiah(r.jumlah_total)}</div>
+          <div class="sub">${r.tanggal_bayar} · Periode: ${r.alokasi.map((a) => a.periode).join(', ')}</div></div>
+      </div>`).join('') : '<div class="empty-state">Belum ada riwayat pembayaran</div>';
+  } catch (e) { if (!isStaleError(e)) { document.getElementById('riwayat-iuran-body').innerHTML = '<div class="empty-state">Gagal memuat riwayat</div>'; } }
 }
 function openIuranModal() {
   if (state.anggotaCache.length === 0) return toast('Tambahkan anggota dulu di menu Anggota');
