@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Kas Kita - Aplikasi Kas Organisasi</title>
-<meta name="theme-color" content="#0F4C3A">
+<meta name="theme-color" content="#087A52">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon.png">
 <style>
@@ -136,6 +136,182 @@
   .settings-row:last-child { border-bottom:none; }
   #print-area { display:none; }
   @media print { body * { visibility:hidden; } #print-area, #print-area * { visibility:visible; } #print-area { display:block !important; position:absolute; top:0; left:0; width:100%; } }
+
+/* ============================================================
+   KAS KITA — FINAL MODERN UI
+   Visual redesign + small UI rendering helpers.
+   Existing API/state logic is preserved.
+   ============================================================ */
+:root{
+  --bg:#F5F8F7; --card:#FFFFFF; --primary:#087A52; --primary-2:#0DA56D;
+  --primary-light:#E8F6F0; --accent:#E6A52D; --masuk:#07965D; --keluar:#E34848;
+  --sebagian:#D99720; --text:#17231F; --text-muted:#74817C; --border:#E6ECE9;
+  --radius:18px; --shadow:0 6px 22px rgba(16,67,49,.065);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{background:#E9EFEC}
+body{
+  margin:0 auto; max-width:480px; min-height:100vh; padding-bottom:84px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  background:linear-gradient(180deg,#F4F8F6 0%,#F8FAF9 45%,#F5F7F6 100%);
+  color:var(--text); letter-spacing:-.01em;
+}
+h1,h2,h3{margin:0 0 4px}.hidden{display:none!important}
+.app-header{
+  color:#fff; padding:16px 17px 34px; border-radius:0 0 28px 28px;
+  background:linear-gradient(135deg,#087A52 0%,#079B66 100%);
+  box-shadow:0 10px 28px rgba(8,122,82,.17); position:relative; overflow:hidden;
+}
+.app-header:after{
+  content:""; position:absolute; width:210px;height:210px;right:-90px;top:-120px;
+  border-radius:50%;background:rgba(255,255,255,.08)
+}
+.app-header-top,.page-title-row{display:flex;align-items:center;justify-content:space-between;position:relative;z-index:2}
+.app-header-top{margin-bottom:22px}
+.brand-block{display:flex;align-items:center;gap:10px}
+.brand-mark{
+  width:39px;height:39px;border:1.5px solid rgba(255,255,255,.7);border-radius:11px;
+  display:grid;place-items:center;font-size:22px;background:rgba(255,255,255,.12)
+}
+.brand-name{font-size:18px;font-weight:850;line-height:1.05}.org-name{font-size:10.5px;opacity:.76;margin-top:3px}
+.header-icon-btn,.header-bell{
+  border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.13);color:#fff;
+  width:39px;height:39px;padding:0;border-radius:50%;display:grid;place-items:center;font-size:19px
+}
+.header-bell{position:relative;width:34px;height:34px;background:rgba(255,255,255,.10)}
+.header-bell i{position:absolute;width:6px;height:6px;background:#E7B13B;border-radius:50%;top:7px;right:7px}
+.page-eyebrow,.page-mini-label{font-size:9.5px;letter-spacing:1.1px;font-weight:750;opacity:.72}
+.app-header h1{font-size:22px;font-weight:850;margin-top:2px}
+.container{padding:15px 16px}
+.home-container{padding-top:0}
+.balance-card{
+  position:relative;z-index:3;margin:-20px 16px 15px;padding:19px 18px;
+  color:#fff;border:0;border-radius:22px;background:linear-gradient(145deg,#08764F,#099C68);
+  box-shadow:0 15px 35px rgba(8,122,82,.19);overflow:hidden
+}
+.balance-card:after{
+  content:"";position:absolute;width:190px;height:190px;right:-85px;bottom:-125px;
+  border-radius:50%;background:rgba(255,255,255,.07)
+}
+.balance-card-top{display:flex;justify-content:space-between;position:relative;z-index:2}
+.balance-card .label{font-size:12px;opacity:.83;font-weight:600}
+.balance-card .eye{font-size:10px;margin-left:4px;opacity:.85}
+.balance-card .amount{font-size:28px;font-weight:850;margin:6px 0 4px;font-variant-numeric:tabular-nums}
+.balance-period{font-size:10.5px;opacity:.72}
+.balance-deco{width:140px;height:58px;margin-top:12px;opacity:.95}
+.balance-deco svg{width:100%;height:100%}
+.balance-row{display:flex;gap:8px;margin-top:15px;position:relative;z-index:2}
+.balance-chip{
+  flex:1;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.12);
+  border-radius:13px;padding:9px 10px
+}
+.balance-chip span{font-size:10px;opacity:.72;display:block}.balance-chip b{display:block;font-size:13px;margin-top:3px}
+.card{
+  background:rgba(255,255,255,.98);border:1px solid #E8EEEB;border-radius:18px;
+  padding:15px;box-shadow:var(--shadow);margin-bottom:13px
+}
+.section-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:11px}
+.section-heading h3{font-size:14px;font-weight:820}.section-heading p{margin:3px 0 0;color:var(--text-muted);font-size:10.5px}
+.muted-caption{font-size:10px;color:var(--text-muted)}
+.link-text{color:var(--primary);font-weight:700;font-size:11.5px;cursor:pointer;text-decoration:none}
+.finance-summary-card{padding:16px}
+.finance-three{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.finance-tile{border-radius:13px;padding:10px 8px;min-height:79px;border:1px solid transparent}
+.finance-tile .tile-icon{width:25px;height:25px;border-radius:8px;display:grid;place-items:center;font-weight:800;font-size:14px;margin-bottom:7px}
+.finance-tile small{display:block;font-size:9.5px;color:var(--text-muted)}
+.finance-tile b{display:block;font-size:11.5px;margin-top:2px;white-space:nowrap}
+.finance-tile.income{background:#F0FAF5;border-color:#E4F3EC}.finance-tile.income .tile-icon{background:#D8F2E5;color:#078D57}.finance-tile.income b{color:#087F50}
+.finance-tile.expense{background:#FFF4F3;border-color:#F8E6E4}.finance-tile.expense .tile-icon{background:#F9DEDB;color:#DF4141}.finance-tile.expense b{color:#D93E3E}
+.finance-tile.balance{background:#EFF5FC;border-color:#E3ECF8}.finance-tile.balance .tile-icon{background:#DDEAF9;color:#2872B7}.finance-tile.balance b{color:#2268AA}
+.selisih-title{font-size:10.5px;font-weight:750;margin:13px 0 7px}
+.selisih-row{display:flex;gap:8px}.selisih-box{flex:1;border-radius:12px;padding:10px;text-align:left;background:#F7F9F8}
+.selisih-box .lbl{font-size:9.5px;color:var(--text-muted)}.selisih-box .val{font-size:12px;font-weight:800;margin-top:4px}
+.selisih-box.positive{background:#F0FAF5}.selisih-box.positive .val{color:#078D57}
+.selisih-box.negative{background:#FFF4F3}.selisih-box.negative .val{color:#DD4141}
+.quick-card{padding:15px}.quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.quick-grid button{
+  display:flex;align-items:center;gap:9px;text-align:left;padding:10px 9px;border-radius:14px;
+  background:#F9FBFA;border:1px solid #EBF0EE;color:var(--text);font-size:12px
+}
+.quick-grid button:active,.round-action:active,.nav-btn:active{transform:scale(.97)}
+.quick-icon{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font-size:18px;font-weight:850;flex:0 0 34px}
+.quick-icon.masuk{background:#DDF5E8;color:#078D57}.quick-icon.keluar{background:#FCE3E1;color:#E34444}
+.quick-icon.transfer{background:#E1EDFA;color:#2C73B7}.quick-icon.adjust{background:#FFF0D4;color:#C98408}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat-box{background:#F7F9F8;border:1px solid #EDF1EF;border-radius:13px;padding:11px 8px;text-align:center}
+.stat-box .num{font-size:17px;font-weight:820}.stat-box .lbl{font-size:9.5px;color:var(--text-muted);margin-top:2px}
+.iuran-home-card{padding:15px}.recent-card{padding:15px}
+.list-page-top{display:flex;align-items:center;justify-content:space-between;padding:2px 1px 12px}
+.list-page-top h2{font-size:23px;font-weight:850;margin-top:1px}.round-action{
+  width:39px;height:39px;padding:0;border-radius:13px;background:var(--primary);color:#fff;
+  font-size:24px;display:grid;place-items:center;box-shadow:0 7px 15px rgba(8,122,82,.16)
+}
+.calendar-badge{width:39px;height:39px;border-radius:13px;background:var(--primary-light);color:var(--primary);display:grid;place-items:center;font-size:19px}
+.search-box{
+  height:45px;display:flex;align-items:center;gap:9px;padding:0 13px;background:#F0F3F2;
+  border-radius:13px;margin-bottom:11px;color:#87928E
+}
+.search-box span{font-size:23px;line-height:1}.search-box input{border:0;background:transparent;padding:0;height:100%;font-size:13px;outline:0}
+.member-stats{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:11px}
+.member-stat{border-radius:16px;padding:13px 12px;min-height:100px;position:relative}
+.member-stat span{font-size:17px;display:block;margin-bottom:5px}.member-stat small{font-size:10px;display:block}
+.member-stat b{font-size:23px;display:block;margin-top:4px}.member-stat em{font-size:9px;font-style:normal;color:var(--text-muted)}
+.member-stat.green{background:#ECF8F1;color:#087A52}.member-stat.blue{background:#EDF4FD;color:#2D69A9}
+.member-list-card{padding:7px 12px}.member-item{display:flex;gap:10px;align-items:center;padding:12px 0}
+.member-avatar{width:36px;height:36px;border-radius:50%;background:#E7F4EE;color:var(--primary);display:grid;place-items:center;font-size:14px;font-weight:800;flex:0 0 36px}
+.member-main{min-width:0;flex:1}.member-main .title{font-size:13px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.member-main .sub{font-size:10.5px;color:var(--text-muted);margin-top:2px}
+.member-status{font-size:10px;color:var(--primary);display:flex;align-items:center;gap:3px;white-space:nowrap}.member-chevron{background:none;padding:2px 0;color:#8A9691;font-size:22px}
+.badge{font-size:9px;padding:3px 7px;border-radius:8px;font-weight:700}
+.badge-netral{background:#EEF1F0;color:#78837F}
+.kas-page-top{padding-top:0}.kas-header-card,.iuran-header-card{
+  color:#fff;background:linear-gradient(145deg,#08764F,#099C68);border:0;border-radius:21px;
+  padding:19px;margin:0 0 14px;box-shadow:0 14px 30px rgba(8,122,82,.16);position:relative;overflow:hidden
+}
+.kas-header-card:after,.iuran-header-card:after{content:"";position:absolute;width:170px;height:170px;right:-80px;bottom:-120px;border-radius:50%;background:rgba(255,255,255,.08)}
+.kas-header-card .label,.iuran-header-card .label{font-size:10px;letter-spacing:1px;opacity:.75}.kas-header-card .amount,.iuran-header-card .amount{font-size:28px;font-weight:850;margin:5px 0;font-variant-numeric:tabular-nums}.kas-header-card .sub{font-size:10.5px;opacity:.72}
+.ringkasan-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ringkasan-item{background:#F7F9F8;border:1px solid #EDF1EF;border-radius:13px;padding:11px}
+.ringkasan-item .lbl{font-size:9.5px;color:var(--text-muted)}.ringkasan-item .val{font-size:12.5px;font-weight:800;margin-top:4px}
+.period-pills{display:flex;gap:6px;overflow-x:auto;margin-bottom:11px;padding-bottom:2px;scrollbar-width:none}
+.period-pill{border:0;background:#F0F4F2;color:var(--text-muted);border-radius:11px;padding:8px 12px;font-size:10.5px;font-weight:700;white-space:nowrap}.period-pill.active{background:var(--primary);color:#fff}
+.action-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.action-btn{padding:12px;border-radius:13px;font-size:12px;font-weight:750}
+.action-btn-masuk{background:#07965D;color:#fff}.action-btn-keluar{background:#E34A4A;color:#fff}.action-btn-netral{background:#EAF4EF;color:#087A52}
+.segmented,.tabs-2{display:flex;background:#EFF3F1;border-radius:12px;padding:3px;gap:2px;overflow-x:auto}
+.segmented button,.tabs-2 button{flex:1;background:transparent;color:#74817C;padding:8px 9px;border-radius:9px;font-size:10.5px;font-weight:700;white-space:nowrap}
+.segmented button.active,.tabs-2 button.active{background:#fff;color:var(--text);box-shadow:0 3px 9px rgba(20,50,40,.08)}
+.trx-card{background:#fff;border:1px solid #E8EEEB;border-radius:15px;padding:12px;margin-bottom:8px;box-shadow:0 3px 11px rgba(17,72,53,.035)}
+.trx-card .trx-title{font-size:12.5px;font-weight:750}.trx-card .trx-sub{font-size:10px;color:var(--text-muted);margin-top:3px}.trx-card .trx-amount{font-size:12.5px;font-weight:820}
+.badge-pill{font-size:8.5px;padding:3px 7px;border-radius:8px;font-weight:700;margin-top:5px}.badge-iuran{background:#FFF1D7;color:#A16A08}.badge-transfer-pill{background:#E8F2FC;color:#2C73B7}.badge-penyesuaian-pill{background:#F2EAF8;color:#7F49A4}
+.iuran-header-card .amount{font-size:27px}.progress-track{height:8px;background:rgba(255,255,255,.24);border-radius:20px;overflow:hidden}.progress-fill{height:100%;background:#fff;border-radius:20px}.progress-caption{font-size:9.5px;margin-top:6px;display:flex;justify-content:space-between;opacity:.82}
+.anggota-progress-card{background:#fff;border:1px solid #E8EEEB;border-radius:15px;padding:12px 13px;margin-bottom:8px}.anggota-progress-card .ap-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}.anggota-progress-card .ap-nama{font-size:12.5px;font-weight:750}.anggota-progress-card .ap-sub{font-size:9.5px;color:var(--text-muted);margin-top:3px}.anggota-progress-card .ap-track{height:6px;background:#F0F3F2;border-radius:20px;overflow:hidden;margin-top:8px}.anggota-progress-card .ap-fill{height:100%;border-radius:20px}
+.profile-hero{
+  color:#fff;text-align:center;padding:29px 18px 72px;background:linear-gradient(145deg,#08764F,#079C67);
+  border-radius:0 0 30px 30px;position:relative;overflow:hidden
+}
+.profile-hero:after{content:"";position:absolute;width:230px;height:230px;right:-100px;top:-150px;border-radius:50%;background:rgba(255,255,255,.07)}
+.profile-avatar{width:84px;height:84px;border-radius:50%;display:grid;place-items:center;margin:0 auto 9px;background:#fff;color:#1D2C27;font-size:43px;border:5px solid rgba(255,255,255,.3);position:relative;z-index:1}
+.profile-hero h2{font-size:20px;position:relative;z-index:1}.profile-hero p{margin:2px 0 8px;font-size:10.5px;opacity:.78;position:relative;z-index:1}.profile-hero>span{font-size:9.5px;padding:5px 10px;border-radius:10px;background:rgba(255,255,255,.16);position:relative;z-index:1}
+.profile-container{padding-top:0;margin-top:-45px;position:relative;z-index:3}.profile-container .card{padding:4px 15px}.profile-container .card h3{padding:11px 0 5px}
+label{font-size:10.5px;color:var(--text-muted);display:block;margin:9px 0 4px}input,select,textarea{width:100%;padding:11px 12px;border-radius:12px;border:1px solid #E0E8E4;background:#F8FAF9;color:var(--text);font-size:13.5px;font-family:inherit}textarea{resize:vertical;min-height:60px}
+button{cursor:pointer;border:0;border-radius:11px;padding:11px 14px;font-size:13.5px;font-weight:650;font-family:inherit}.btn-primary{background:linear-gradient(135deg,#087A52,#0A9865);color:#fff;width:100%;box-shadow:0 7px 15px rgba(8,122,82,.12)}.btn-secondary{background:var(--primary-light);color:var(--primary);width:100%}.btn-danger{background:#FCEAE8;color:var(--keluar)}.btn-small{padding:6px 10px;font-size:11px}.btn-outline{background:transparent;border:1px solid #DFE7E3;color:var(--text)}
+.settings-row{padding:12px 0;border-bottom:1px solid #E9EEEC;font-size:12px}.code-box{border-radius:13px;padding:12px;background:var(--primary-light);color:var(--primary)}
+.modal-overlay{background:rgba(10,25,19,.48);backdrop-filter:blur(3px)}.modal-sheet{border-radius:24px 24px 0 0;padding:22px 17px calc(22px + env(safe-area-inset-bottom));box-shadow:0 -10px 35px rgba(0,0,0,.12)}
+.close-x{top:12px;right:13px;border-radius:50%;width:32px;height:32px;padding:0;background:#F1F4F2;color:#66736E;font-size:16px}
+.bottom-nav{
+  position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:100%;max-width:480px;
+  display:flex;background:rgba(255,255,255,.97);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-top:1px solid #E4EBE7;padding:7px 6px calc(7px + env(safe-area-inset-bottom));
+  box-shadow:0 -8px 25px rgba(19,55,42,.07);z-index:50
+}
+.nav-btn{flex:1;background:transparent;color:#78847F;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:9px;padding:5px 1px;border-radius:13px;font-weight:550}
+.nav-btn .icon{font-size:19px;line-height:18px}.nav-btn.active{color:var(--primary);font-weight:800}.nav-btn.active .icon{background:var(--primary-light);border-radius:10px;padding:3px 10px}
+.toast{border-radius:14px;box-shadow:0 8px 25px rgba(0,0,0,.18)}
+.auth-box .card{border-radius:22px}.auth-box h1{font-size:28px}
+.empty-state,.empty-illustration{text-align:center;padding:28px 10px;color:var(--text-muted);font-size:11px}.empty-illustration .emoji{font-size:32px}
+@media(max-width:360px){
+  .container{padding-left:13px;padding-right:13px}.balance-card{margin-left:13px;margin-right:13px}.finance-three{gap:5px}
+  .finance-tile{padding-left:6px;padding-right:6px}.finance-tile b{font-size:10.5px}
+}
+
 </style>
 </head>
 <body>
@@ -192,38 +368,112 @@
 <!-- ===================== MAIN APP ===================== -->
 <div id="view-app" class="hidden">
   <div class="app-header">
-    <div id="header-org-name" class="org-name">Organisasi</div>
-    <h1 id="header-title">Beranda</h1>
+    <div class="app-header-top">
+      <div class="brand-block">
+        <div class="brand-mark">▣</div>
+        <div>
+          <div class="brand-name">Kas Kita</div>
+          <div id="header-org-name" class="org-name">Organisasi</div>
+        </div>
+      </div>
+      <button class="header-icon-btn" onclick="switchTab('profil')" aria-label="Buka profil">♙</button>
+    </div>
+    <div class="page-title-row">
+      <div>
+        <div class="page-eyebrow">KEUANGAN ORGANISASI</div>
+        <h1 id="header-title">Beranda</h1>
+      </div>
+      <button class="header-bell" aria-label="Notifikasi">♧<i></i></button>
+    </div>
   </div>
 
   <!-- BERANDA -->
   <div id="tab-content-beranda" class="tab-content">
     <div class="balance-card">
-      <div class="label">Saldo Kas Saat Ini</div>
-      <div class="amount" id="home-saldo">Rp0</div>
+      <div class="balance-card-top">
+        <div>
+          <div class="label">Saldo Kas <span class="eye">◉</span></div>
+          <div class="amount" id="home-saldo">Rp0</div>
+          <div class="balance-period" id="home-period-label">Periode bulan ini</div>
+        </div>
+        <div class="balance-deco">
+          <svg viewBox="0 0 150 65" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M2 51 C18 34, 24 42, 37 22 S57 49, 72 25 S92 13, 107 22 S126 7, 148 2" fill="none" stroke="rgba(126,246,188,.72)" stroke-width="3" stroke-linecap="round"/>
+            <path d="M2 51 C18 34, 24 42, 37 22 S57 49, 72 25 S92 13, 107 22 S126 7, 148 2 L148 65 L2 65 Z" fill="rgba(126,246,188,.08)"/>
+          </svg>
+        </div>
+      </div>
       <div class="balance-row">
-        <div class="balance-chip">Pemasukan<b id="home-masuk">Rp0</b></div>
-        <div class="balance-chip">Pengeluaran<b id="home-keluar">Rp0</b></div>
+        <div class="balance-chip"><span>Pemasukan</span><b id="home-masuk">Rp0</b></div>
+        <div class="balance-chip"><span>Pengeluaran</span><b id="home-keluar">Rp0</b></div>
       </div>
     </div>
-    <div class="container" style="padding-top:0">
-      <div class="card">
-        <h3 style="font-size:15px">Iuran Bulan Ini</h3>
-        <p style="font-size:13px;color:var(--text-muted);margin:4px 0 10px" id="home-anggota-count">0 anggota</p>
-        <div class="stat-grid">
+
+    <div class="container home-container">
+      <div class="card finance-summary-card">
+        <div class="section-heading">
+          <h3>Ringkasan Bulan Ini</h3>
+          <a class="link-text" onclick="switchTab('laporan')">Lihat Laporan ›</a>
+        </div>
+        <div class="finance-three">
+          <div class="finance-tile income">
+            <span class="tile-icon">↙</span>
+            <small>Pemasukan</small>
+            <b id="home-masuk-mini">Rp0</b>
+          </div>
+          <div class="finance-tile expense">
+            <span class="tile-icon">↗</span>
+            <small>Pengeluaran</small>
+            <b id="home-keluar-mini">Rp0</b>
+          </div>
+          <div class="finance-tile balance">
+            <span class="tile-icon">⇄</span>
+            <small>Saldo Akhir</small>
+            <b id="home-saldo-mini">Rp0</b>
+          </div>
+        </div>
+        <div class="selisih-title">Selisih</div>
+        <div class="selisih-row home-selisih-row">
+          <div class="selisih-box positive"><div class="lbl">Selisih Pemasukan</div><div class="val" id="home-selisih-masuk">+Rp0</div></div>
+          <div class="selisih-box negative"><div class="lbl">Selisih Pengeluaran</div><div class="val" id="home-selisih-keluar">-Rp0</div></div>
+        </div>
+      </div>
+
+      <div class="card quick-card">
+        <div class="section-heading">
+          <h3>Aksi Cepat</h3>
+          <span class="muted-caption">Tambah transaksi</span>
+        </div>
+        <div class="quick-grid">
+          <button onclick="openTransaksiModal('masuk')"><span class="quick-icon masuk">↓</span><b>Pemasukan</b></button>
+          <button onclick="openTransaksiModal('keluar')"><span class="quick-icon keluar">↑</span><b>Pengeluaran</b></button>
+          <button onclick="openTransaksiModal('transfer')"><span class="quick-icon transfer">⇄</span><b>Transfer</b></button>
+          <button onclick="openTransaksiModal('penyesuaian')"><span class="quick-icon adjust">✎</span><b>Penyesuaian</b></button>
+        </div>
+      </div>
+
+      <div class="card iuran-home-card">
+        <div class="section-heading">
+          <div>
+            <h3>Iuran Bulan Ini</h3>
+            <p id="home-anggota-count">0 anggota aktif</p>
+          </div>
+          <a class="link-text" onclick="switchTab('iuran')">Lihat ›</a>
+        </div>
+        <div class="stat-grid home-stat-grid">
           <div class="stat-box"><div class="num" id="home-lunas" style="color:var(--masuk)">0</div><div class="lbl">Lunas</div></div>
           <div class="stat-box"><div class="num" id="home-sebagian" style="color:var(--sebagian)">0</div><div class="lbl">Sebagian</div></div>
           <div class="stat-box"><div class="num" id="home-belum" style="color:var(--keluar)">0</div><div class="lbl">Belum Bayar</div></div>
           <div class="stat-box"><div class="num" id="home-tunggakan" style="font-size:14px">Rp0</div><div class="lbl">Tunggakan</div></div>
         </div>
-        <button class="btn-secondary" style="margin-top:12px" onclick="switchTab('iuran')">Lihat Iuran</button>
       </div>
-      <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <h3 style="font-size:15px">Aktivitas Terbaru</h3>
-          <a class="link-text" style="font-size:12.5px" onclick="switchTab('kas')">Lihat Semua</a>
+
+      <div class="card recent-card">
+        <div class="section-heading">
+          <h3>Aktivitas Terbaru</h3>
+          <a class="link-text" onclick="switchTab('kas')">Lihat Semua ›</a>
         </div>
-        <div id="home-recent-list" style="margin-top:8px"></div>
+        <div id="home-recent-list"></div>
       </div>
     </div>
   </div>
@@ -231,13 +481,31 @@
   <!-- ANGGOTA -->
   <div id="tab-content-anggota" class="tab-content hidden">
     <div class="container">
-      <button class="btn-primary" onclick="openAnggotaModal()">+ Tambah Anggota</button>
-      <div class="card" style="margin-top:14px"><div id="anggota-list"></div></div>
+      <div class="list-page-top">
+        <div>
+          <div class="page-mini-label">DATA ORGANISASI</div>
+          <h2>Anggota</h2>
+        </div>
+        <button class="round-action" onclick="openAnggotaModal()" aria-label="Tambah anggota">＋</button>
+      </div>
+      <div class="member-stats">
+        <div class="member-stat green"><span>♧</span><small>Total Anggota</small><b id="anggota-total-stat">0</b><em>Orang</em></div>
+        <div class="member-stat blue"><span>♙</span><small>Aktif</small><b id="anggota-aktif-stat">0</b><em>Orang</em></div>
+      </div>
+      <div class="search-box"><span>⌕</span><input id="anggota-search" placeholder="Cari anggota..." oninput="filterAnggotaView(this.value)"></div>
+      <div class="card member-list-card"><div id="anggota-list"></div></div>
     </div>
   </div>
 
   <!-- KAS -->
   <div id="tab-content-kas" class="tab-content hidden">
+    <div class="list-page-top kas-page-top">
+      <div>
+        <div class="page-mini-label">BUKU KAS</div>
+        <h2>Transaksi</h2>
+      </div>
+      <button class="round-action" onclick="openTransaksiModal('masuk')" aria-label="Tambah transaksi">＋</button>
+    </div>
     <div class="kas-header-card">
       <div class="label">SALDO KAS</div>
       <div class="amount" id="kas-saldo">Rp0</div>
@@ -296,6 +564,13 @@
 
   <!-- IURAN -->
   <div id="tab-content-iuran" class="tab-content hidden">
+    <div class="list-page-top">
+      <div>
+        <div class="page-mini-label">KEWAJIBAN ANGGOTA</div>
+        <h2>Iuran</h2>
+      </div>
+      <button class="round-action" onclick="openIuranSettingsModal()" aria-label="Pengaturan iuran">⚙</button>
+    </div>
     <div class="iuran-header-card">
       <div class="label" id="iuran-nama-display">Iuran Bulanan</div>
       <div class="amount" id="iuran-terkumpul-display">Rp0</div>
@@ -340,6 +615,13 @@
   <!-- LAPORAN -->
   <div id="tab-content-laporan" class="tab-content hidden">
     <div class="container">
+      <div class="list-page-top">
+        <div>
+          <div class="page-mini-label">ANALISIS KEUANGAN</div>
+          <h2>Laporan</h2>
+        </div>
+        <span class="calendar-badge">▣</span>
+      </div>
       <div class="tabs-2">
         <button id="tab-laporan-bulanan" class="active" onclick="switchLaporanTab('bulanan')">Bulanan</button>
         <button id="tab-laporan-tahunan" onclick="switchLaporanTab('tahunan')">Tahunan</button>
@@ -383,9 +665,15 @@
 
   <!-- PROFIL -->
   <div id="tab-content-profil" class="tab-content hidden">
-    <div class="container">
+    <div class="profile-hero">
+      <div class="profile-avatar">♙</div>
+      <h2 id="profile-hero-name">Admin Kas</h2>
+      <p id="profile-hero-email">admin@kaskita.id</p>
+      <span>Administrator</span>
+    </div>
+    <div class="container profile-container">
       <div class="card">
-        <h3 style="font-size:15px">Identitas Pengguna</h3>
+        <h3 style="font-size:15px">Profil Saya</h3>
         <label style="margin-top:8px">Nama</label><input type="text" id="profil-nama">
         <p style="font-size:12.5px;color:var(--text-muted);margin-top:6px" id="profil-email"></p>
         <button class="btn-secondary" style="margin-top:10px" onclick="updateProfil()">Simpan Nama</button>
@@ -420,12 +708,11 @@
   </div>
 
   <div class="bottom-nav">
-    <button class="nav-btn active" data-tab="beranda" onclick="switchTab('beranda')"><span class="icon">🏠</span>Beranda</button>
-    <button class="nav-btn" data-tab="anggota" onclick="switchTab('anggota')"><span class="icon">👥</span>Anggota</button>
-    <button class="nav-btn" data-tab="kas" onclick="switchTab('kas')"><span class="icon">📒</span>Kas</button>
-    <button class="nav-btn" data-tab="iuran" onclick="switchTab('iuran')"><span class="icon">💳</span>Iuran</button>
-    <button class="nav-btn" data-tab="laporan" onclick="switchTab('laporan')"><span class="icon">📊</span>Laporan</button>
-    <button class="nav-btn" data-tab="profil" onclick="switchTab('profil')"><span class="icon">⚙️</span>Profil</button>
+    <button class="nav-btn active" data-tab="beranda" onclick="switchTab('beranda')"><span class="icon">⌂</span><span>Beranda</span></button>
+    <button class="nav-btn" data-tab="kas" onclick="switchTab('kas')"><span class="icon">▤</span><span>Transaksi</span></button>
+    <button class="nav-btn" data-tab="anggota" onclick="switchTab('anggota')"><span class="icon">♧</span><span>Anggota</span></button>
+    <button class="nav-btn" data-tab="iuran" onclick="switchTab('iuran')"><span class="icon">▣</span><span>Iuran</span></button>
+    <button class="nav-btn" data-tab="laporan" onclick="switchTab('laporan')"><span class="icon">▥</span><span>Laporan</span></button>
   </div>
 </div>
 
@@ -620,6 +907,12 @@ async function loadBeranda() {
     document.getElementById('home-saldo').textContent = fmtRupiah(d.saldo);
     document.getElementById('home-masuk').textContent = fmtRupiah(d.pemasukan_bulan_ini);
     document.getElementById('home-keluar').textContent = fmtRupiah(d.pengeluaran_bulan_ini);
+    document.getElementById('home-masuk-mini').textContent = fmtRupiah(d.pemasukan_bulan_ini);
+    document.getElementById('home-keluar-mini').textContent = fmtRupiah(d.pengeluaran_bulan_ini);
+    document.getElementById('home-saldo-mini').textContent = fmtRupiah(d.saldo);
+    const homeSelisih = Number(d.pemasukan_bulan_ini || 0) - Number(d.pengeluaran_bulan_ini || 0);
+    document.getElementById('home-selisih-masuk').textContent = (homeSelisih >= 0 ? '+' : '-') + fmtRupiah(Math.abs(homeSelisih));
+    document.getElementById('home-selisih-keluar').textContent = (homeSelisih >= 0 ? '+Rp0' : '-' + fmtRupiah(Math.abs(homeSelisih)));
     document.getElementById('home-anggota-count').textContent = d.iuran.total_anggota + ' anggota aktif';
     document.getElementById('home-lunas').textContent = d.iuran.lunas;
     document.getElementById('home-sebagian').textContent = d.iuran.sebagian;
@@ -639,13 +932,35 @@ async function loadAnggota() {
     const data = await api('/api/anggota');
     if (myEpoch !== state.reqEpoch) return;
     state.anggotaCache = data.anggota;
-    document.getElementById('anggota-list').innerHTML = data.anggota.length ? data.anggota.map((a) => `
-      <div class="list-item">
-        <div><div class="title">${escapeHtml(a.nama)}${a.aktif ? '' : ' <span class="badge badge-netral">Nonaktif</span>'}</div>
-        <div class="sub">${escapeHtml(a.no_hp || '-')} · Gabung ${a.tanggal_gabung}</div></div>
-        <button class="btn-outline btn-small" onclick='openAnggotaModal(${JSON.stringify(a)})'>Edit</button>
-      </div>`).join('') : '<div class="empty-state">Belum ada anggota. Tambahkan dulu.</div>';
+    const total = data.anggota.length;
+    const aktif = data.anggota.filter(a => a.aktif).length;
+    const totalEl = document.getElementById('anggota-total-stat');
+    const aktifEl = document.getElementById('anggota-aktif-stat');
+    if (totalEl) totalEl.textContent = total;
+    if (aktifEl) aktifEl.textContent = aktif;
+    renderAnggotaList(data.anggota);
   } catch (e) { if (!isStaleError(e)) toast(e.message); }
+}
+function renderAnggotaList(list) {
+  const el = document.getElementById('anggota-list');
+  if (!el) return;
+  el.innerHTML = list.length ? list.map((a) => `
+    <div class="list-item member-item">
+      <div class="member-avatar">${escapeHtml((a.nama || '?').charAt(0).toUpperCase())}</div>
+      <div class="member-main">
+        <div class="title">${escapeHtml(a.nama)}${a.aktif ? '' : ' <span class="badge badge-netral">Nonaktif</span>'}</div>
+        <div class="sub">${escapeHtml(a.no_hp || '-')}</div>
+      </div>
+      <div class="member-status">${a.aktif ? 'Aktif' : 'Tidak Aktif'} <button class="member-chevron" onclick='openAnggotaModal(${JSON.stringify(a)})'>›</button></div>
+    </div>`).join('') : '<div class="empty-state">Belum ada anggota. Tambahkan dulu.</div>';
+}
+function filterAnggotaView(q) {
+  const query = String(q || '').trim().toLowerCase();
+  const list = state.anggotaCache.filter(a =>
+    String(a.nama || '').toLowerCase().includes(query) ||
+    String(a.no_hp || '').toLowerCase().includes(query)
+  );
+  renderAnggotaList(list);
 }
 function openAnggotaModal(a) {
   const editing = !!a;
@@ -1243,5 +1558,19 @@ function toggleDark() {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 })();
 </script>
+
+<script>
+(function(){
+  function syncProfileHero(){
+    var n=document.getElementById('profil-nama'), hn=document.getElementById('profile-hero-name');
+    var e=document.getElementById('profil-email'), he=document.getElementById('profile-hero-email');
+    if(n&&hn&&n.value) hn.textContent=n.value;
+    if(e&&he&&e.textContent) he.textContent=e.textContent;
+  }
+  document.addEventListener('DOMContentLoaded', syncProfileHero);
+  setInterval(syncProfileHero, 1200);
+})();
+</script>
+
 </body>
 </html>
