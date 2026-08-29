@@ -333,6 +333,23 @@ async function handleApi(request, env, path, url) {
     await env.DB.prepare('INSERT INTO akun (id, organization_id, nama, saldo_awal) VALUES (?, ?, ?, ?)').bind(id, orgId, nama, saldo_awal || 0).run();
     return json({ id, nama });
   }
+  if (path.match(/^\/api\/akun\/[^/]+$/) && method === 'PUT') {
+    const id = path.split('/').pop();
+    const { nama, saldo_awal } = await request.json();
+    if (!nama) return err('Nama akun wajib diisi');
+    await env.DB.prepare('UPDATE akun SET nama = ?, saldo_awal = ? WHERE id = ? AND organization_id = ?')
+      .bind(nama, saldo_awal || 0, id, orgId).run();
+    return json({ ok: true });
+  }
+  if (path.match(/^\/api\/akun\/[^/]+$/) && method === 'DELETE') {
+    const id = path.split('/').pop();
+    const dipakai = await env.DB.prepare('SELECT 1 FROM transaksi WHERE (akun_id = ? OR akun_tujuan_id = ?) AND organization_id = ? LIMIT 1').bind(id, id, orgId).first();
+    if (dipakai) return err('Akun tidak bisa dihapus karena sudah punya riwayat transaksi. Nonaktifkan saja lewat Edit.', 400);
+    const jumlahAkun = await env.DB.prepare('SELECT COUNT(*) as c FROM akun WHERE organization_id = ? AND aktif = 1').bind(orgId).first();
+    if (jumlahAkun.c <= 1) return err('Tidak bisa menghapus akun terakhir. Organisasi minimal punya 1 akun.', 400);
+    await env.DB.prepare('UPDATE akun SET aktif = 0 WHERE id = ? AND organization_id = ?').bind(id, orgId).run();
+    return json({ ok: true });
+  }
 
   // ---- Anggota ----
   if (path === '/api/anggota' && method === 'GET') {
