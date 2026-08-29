@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Kas Kita - Aplikasi Kas Organisasi</title>
-<meta name="theme-color" content="#087A52">
+<meta name="theme-color" content="#087C52">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon.png">
 <style>
@@ -240,7 +240,7 @@ h1,h2,h3{margin:0 0 4px}.hidden{display:none!important}
 .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .stat-box{background:#F7F9F8;border:1px solid #EDF1EF;border-radius:13px;padding:11px 8px;text-align:center}
 .stat-box .num{font-size:17px;font-weight:820}.stat-box .lbl{font-size:9.5px;color:var(--text-muted);margin-top:2px}
-.iuran-home-card{padding:15px}.recent-card{padding:15px}
+.iuran-home-card{display:none!important}.recent-card{padding:15px}
 .list-page-top{display:flex;align-items:center;justify-content:space-between;padding:2px 1px 12px}
 .list-page-top h2{font-size:23px;font-weight:850;margin-top:1px}.round-action{
   width:39px;height:39px;padding:0;border-radius:13px;background:var(--primary);color:#fff;
@@ -310,6 +310,61 @@ button{cursor:pointer;border:0;border-radius:11px;padding:11px 14px;font-size:13
 @media(max-width:360px){
   .container{padding-left:13px;padding-right:13px}.balance-card{margin-left:13px;margin-right:13px}.finance-three{gap:5px}
   .finance-tile{padding-left:6px;padding-right:6px}.finance-tile b{font-size:10.5px}
+}
+
+
+/* === REFERENCE SCREEN FINAL OVERRIDES === */
+:root{
+  --bg:#F7F8F8; --card:#FFFFFF; --primary:#087C52; --primary-2:#099765;
+  --primary-light:#E9F7F1; --text:#171C1A; --text-muted:#727B77;
+  --border:#E6EAE8; --radius:20px; --shadow:0 5px 18px rgba(17,48,37,.055);
+}
+body{max-width:480px;background:#F7F8F8;padding-bottom:78px;overflow-x:hidden}
+.app-header{
+  height:112px;padding:15px 20px 0;border-radius:0;
+  background:linear-gradient(135deg,#087A52 0%,#079765 100%);box-shadow:none;overflow:hidden
+}
+.app-header:after{width:190px;height:190px;right:-75px;top:-130px;background:rgba(255,255,255,.065)}
+.app-header-top{margin:0;align-items:center}.brand-block{gap:11px}
+.brand-mark{width:48px;height:48px;border:0;border-radius:11px;background:transparent;font-size:0;position:relative}
+.brand-mark:before{content:'▰';font-size:40px;color:#fff;line-height:48px;display:block;transform:scaleX(1.05)}
+.brand-name{font-size:22px;font-weight:850;line-height:1.05}.org-name{font-size:12px;margin-top:5px;opacity:.86}
+.header-icon-btn{width:47px;height:47px;border:1px solid rgba(255,255,255,.24);background:rgba(255,255,255,.10);font-size:23px;margin-left:auto}
+.page-title-row{display:none}
+.balance-card{
+  z-index:3;margin:24px 18px 18px;padding:20px 20px 17px;min-height:273px;border-radius:20px;
+  background:linear-gradient(145deg,#08774F,#079B68);box-shadow:0 9px 25px rgba(8,122,82,.14)
+}
+.balance-card:after{width:180px;height:180px;right:-70px;bottom:-120px}
+.balance-card-top{min-height:137px}.balance-card .label{font-size:14px;opacity:.88}.balance-card .eye{font-size:9px}
+.balance-card .amount{font-size:39px;line-height:1.05;margin:13px 0 8px;font-weight:850}.balance-period{font-size:12px}
+.balance-deco{width:185px;height:78px;margin-top:24px;margin-right:-2px}
+.balance-deco svg{opacity:.9}.balance-row{gap:10px;margin-top:8px}
+.balance-chip{height:89px;border-radius:16px;padding:15px 17px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.23)}
+.balance-chip span{font-size:13px}.balance-chip b{font-size:18px;margin-top:5px}
+.container{padding:0 18px}.home-container{padding-top:0}
+.card{border-radius:20px;border:1px solid #E9EDEB;box-shadow:var(--shadow);padding:18px;margin-bottom:17px}
+.finance-summary-card{padding:20px 19px}.section-heading{margin-bottom:17px}.section-heading h3{font-size:17px;font-weight:820}.link-text{font-size:13px;color:#087C52}
+.finance-three{gap:10px}.finance-tile{min-height:99px;border-radius:16px;padding:13px 12px}
+.finance-tile .tile-icon{width:34px;height:34px;border-radius:50%;font-size:16px;margin-bottom:9px}
+.finance-tile small{font-size:11.5px}.finance-tile b{font-size:15px;margin-top:4px}
+.selisih-title{font-size:13px;margin:18px 0 10px}.selisih-row{gap:10px}.selisih-box{border-radius:15px;padding:14px 15px;min-height:71px}.selisih-box .lbl{font-size:11.5px}.selisih-box .val{font-size:16px;margin-top:6px}
+.quick-card{padding:19px}.quick-grid{gap:10px}.quick-grid button{height:83px;border-radius:16px;padding:14px 16px;gap:13px;background:#fff;border:1px solid #E8ECEA}
+.quick-grid button b{font-size:14px}.quick-icon{width:36px;height:36px;flex-basis:36px;border-radius:50%;font-size:18px}
+.quick-card .section-heading{margin-bottom:14px}.quick-card .muted-caption{font-size:13px;color:#087C52;font-weight:650}
+.recent-card{padding:18px 19px}.recent-card .section-heading{margin-bottom:13px}
+#home-recent-list .list-item{padding:14px 0;border-bottom:1px solid #E8ECEA}
+#home-recent-list .list-item:last-child{border-bottom:0}
+#home-recent-list .list-item .title{font-size:13px}.list-item .sub{font-size:10.5px;color:var(--text-muted)}
+.bottom-nav{max-width:480px;padding:7px 8px calc(7px + env(safe-area-inset-bottom));box-shadow:0 -4px 18px rgba(17,48,37,.06)}
+.nav-btn{font-size:9.5px;gap:4px;padding:4px 1px}.nav-btn .icon{font-size:21px}.nav-btn.active .icon{padding:2px 10px}
+/* Keep all secondary screens balanced rather than oversized. */
+.list-page-top{padding:14px 0 12px}.list-page-top h2{font-size:22px}.round-action{width:40px;height:40px}
+.member-stats{gap:10px}.member-stat{min-height:94px}.search-box{height:44px}.member-list-card{padding:7px 13px}
+.kas-header-card,.iuran-header-card{border-radius:19px;padding:18px;margin-bottom:13px}.kas-header-card .amount,.iuran-header-card .amount{font-size:28px}
+.profile-hero{padding:26px 18px 64px;border-radius:0 0 25px 25px}.profile-container{margin-top:-39px}
+@media(max-width:390px){
+ .app-header{height:105px;padding-left:15px;padding-right:15px}.brand-name{font-size:20px}.balance-card{margin-left:14px;margin-right:14px;min-height:255px;padding:18px}.balance-card .amount{font-size:35px}.balance-deco{width:150px}.balance-chip{height:78px;padding:12px}.finance-tile{padding:11px 9px}.finance-tile b{font-size:13px}.quick-grid button{height:76px}
 }
 
 </style>
