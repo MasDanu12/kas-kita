@@ -1,0 +1,31 @@
+name = "kas-kita"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+# ---------- D1 Database ----------
+# Buat dulu dengan: wrangler d1 create kas-kita-db
+# Lalu isi database_id di bawah ini dengan hasilnya
+[[d1_databases]]
+binding = "DB"
+database_name = "kas-kita-db"
+database_id = "GANTI_DENGAN_DATABASE_ID_HASIL_WRANGLER_D1_CREATE"
+
+# ---------- R2 Bucket (foto profil) ----------
+# Buat dulu dengan: wrangler r2 bucket create kas-kita-foto
+[[r2_buckets]]
+binding = "R2_FOTO"
+bucket_name = "kas-kita-foto"
+
+# ---------- Variabel biasa (boleh dilihat publik) ----------
+[vars]
+APP_URL = "https://kas-kita.contoh-domain.workers.dev"
+MAIL_FROM = "noreply@contoh-domain.com"
+
+# ---------- Static assets (frontend PWA) ----------
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# ---------- Secrets (JANGAN ditulis di sini, isi lewat CLI) ----------
+# wrangler secret put JWT_SECRET
+# wrangler secret put MAILCHANNELS_API_KEY
