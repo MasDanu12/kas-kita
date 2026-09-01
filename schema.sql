@@ -15,7 +15,6 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT UNIQUE NOT NULL,
   password_hash TEXT,                          -- NULL kalau login via Google
   no_hp TEXT,
-  foto_url TEXT,                                -- NEW: link foto profil di R2
   tema TEXT NOT NULL DEFAULT 'terang' CHECK (tema IN ('terang','gelap')), -- NEW
   google_id TEXT UNIQUE,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),

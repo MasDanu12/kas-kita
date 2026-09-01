@@ -4,7 +4,6 @@
 // laporan, profil, notifikasi.
 // Binding yang dibutuhkan (wrangler.toml):
 //   DB           -> D1 Database
-//   R2_FOTO      -> R2 Bucket (foto profil)
 //   JWT_SECRET   -> secret, untuk sign token
 //   MAILCHANNELS_API_KEY -> secret, MailChannels Email API baru
 //   MAIL_FROM    -> var, alamat pengirim terverifikasi
@@ -275,7 +274,7 @@ async function handleAuth(request, env, path) {
     const token = await signJWT({ sub: user.id }, env.JWT_SECRET, expiresIn);
     return json({
       token,
-      user: { id: user.id, nama: user.nama, email: user.email, foto_url: user.foto_url },
+      user: { id: user.id, nama: user.nama, email: user.email },
     });
   }
 
@@ -303,9 +302,9 @@ async function handleAuth(request, env, path) {
     if (!user) {
       const id = newId();
       await env.DB.prepare(
-        `INSERT INTO users (id, nama, email, google_id, foto_url) VALUES (?, ?, ?, ?, ?)`
+        `INSERT INTO users (id, nama, email, google_id) VALUES (?, ?, ?, ?)`
       )
-        .bind(id, nama, email, googleId, payload.picture || null)
+        .bind(id, nama, email, googleId)
         .run();
       user = { id, nama, email };
     } else if (!user.google_id) {
@@ -497,7 +496,6 @@ async function handleProfil(request, env, path, user, orgCtx) {
         nama: user.nama,
         email: user.email,
         no_hp: user.no_hp,
-        foto_url: user.foto_url,
         tema: user.tema,
         created_at: user.created_at,
       },
@@ -572,33 +570,6 @@ async function handleProfil(request, env, path, user, orgCtx) {
       .bind(newHash, user.id)
       .run();
     return json({ message: 'Password berhasil diubah' });
-  }
-
-  // POST /api/profil/foto  (upload ke R2, expects multipart atau base64 JSON)
-  if (path === '/api/profil/foto' && request.method === 'POST') {
-    const contentType = request.headers.get('Content-Type') || '';
-    if (!contentType.includes('application/json')) {
-      return errorResponse('Gunakan JSON dengan field foto_base64 dan mime_type');
-    }
-    const body = await request.json().catch(() => ({}));
-    const { foto_base64, mime_type } = body;
-    if (!foto_base64 || !mime_type) return errorResponse('foto_base64 dan mime_type wajib diisi');
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(mime_type)) {
-      return errorResponse('Format foto harus JPEG, PNG, atau WEBP');
-    }
-    const bytes = Uint8Array.from(atob(foto_base64), (c) => c.charCodeAt(0));
-    if (bytes.length > 5 * 1024 * 1024) return errorResponse('Ukuran foto maksimal 5MB');
-
-    const ext = mime_type.split('/')[1];
-    const key = `profil/${user.id}-${Date.now()}.${ext}`;
-    await env.R2_FOTO.put(key, bytes, { httpMetadata: { contentType: mime_type } });
-
-    const fotoUrl = `${env.APP_URL}/r2/${key}`;
-    await env.DB.prepare('UPDATE users SET foto_url = ?, updated_at = datetime("now") WHERE id = ?')
-      .bind(fotoUrl, user.id)
-      .run();
-
-    return json({ foto_url: fotoUrl });
   }
 
   return errorResponse('Endpoint profil tidak ditemukan', 404);
@@ -1749,19 +1720,6 @@ export default {
     }
 
     try {
-      // --- Serve foto profil dari R2 (publik, tanpa auth) ---
-      if (path.startsWith('/r2/')) {
-        const key = path.replace('/r2/', '');
-        const object = await env.R2_FOTO.get(key);
-        if (!object) return errorResponse('File tidak ditemukan', 404);
-        return new Response(object.body, {
-          headers: {
-            'Content-Type': object.httpMetadata?.contentType || 'application/octet-stream',
-            'Cache-Control': 'public, max-age=31536000',
-          },
-        });
-      }
-
       // --- Rute publik (tanpa auth) ---
       if (path.startsWith('/api/auth/')) {
         return await handleAuth(request, env, path);

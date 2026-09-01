@@ -21,8 +21,6 @@ kas-kita-redesign/
 ```bash
 wrangler d1 create kas-kita-db
 # salin database_id yang muncul, tempel ke wrangler.toml
-
-wrangler r2 bucket create kas-kita-foto
 ```
 
 ### 2. Jalankan migrasi skema
@@ -60,6 +58,7 @@ wrangler deploy
 Endpoint `/api/auth/google` menerima `id_token` dari Google Sign-In JS SDK di sisi frontend. Frontend saat ini **belum** menyertakan tombol Login Google fungsional (perlu Client ID dari Google Cloud Console) — perlu ditambahkan manual di `public/index.html` bagian `renderLogin()` kalau ingin diaktifkan.
 
 ## Catatan penting / batasan yang perlu diketahui
+- **Foto profil**: tidak pakai upload foto asli — memakai avatar inisial nama (huruf pertama) agar tidak perlu layanan penyimpanan file berbayar/tambahan (Cloudflare R2 sengaja tidak dipakai sesuai keputusan).
 - **Struk transaksi**: digenerate di sisi browser (Canvas → PNG), bukan di server. Tombol "bagikan ke WhatsApp/Telegram" akan mengunduh PNG dulu lalu membuka aplikasi tujuan (keterbatasan teknis: browser tidak bisa mengirim file langsung ke WhatsApp/Telegram lewat URL scheme).
 - **Laporan PDF**: dibuat lewat `window.print()` di tab baru dengan layout khusus cetak, bukan generate PDF asli di server. Pengguna tinggal pilih "Simpan sebagai PDF" di dialog print browser.
 - **Ikon navigasi**: memakai emoji (🏠👥📄👤) sebagai pengganti ikon custom, supaya tidak perlu dependency font ikon eksternal. Bisa diganti ke SVG/ikon custom kapan saja tanpa mengubah logika.
