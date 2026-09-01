@@ -8,7 +8,7 @@ compatibility_date = "2025-01-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "kas-kita-db"
-database_id = "GANTI_DENGAN_DATABASE_ID_HASIL_WRANGLER_D1_CREATE"
+database_id = "e827123b-84f9-462f-9848-51393430147d"
 
 # ---------- R2 Bucket (foto profil) ----------
 # Buat dulu dengan: wrangler r2 bucket create kas-kita-foto
