@@ -12,7 +12,7 @@ database_id = "e827123b-84f9-462f-9848-51393430147d"
 
 # ---------- Variabel biasa (boleh dilihat publik) ----------
 [vars]
-APP_URL = "https://kas-kita.contoh-domain.workers.dev"
+APP_URL = "https://kas-kita.danangpandanu02.workers.dev/"
 MAIL_FROM = "noreply@contoh-domain.com"
 
 # ---------- Static assets (frontend PWA) ----------
