@@ -1535,12 +1535,8 @@ async function renderProfil() {
 
     <div class="card">
       <div style="display:flex;gap:12px;align-items:center">
-        <div style="position:relative">
-          <div style="width:64px;height:64px;border-radius:50%;background:var(--hijau-muda);display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:24px;font-weight:700;color:var(--hijau-tua)">
-            ${u.foto_url ? `<img src="${u.foto_url}" style="width:100%;height:100%;object-fit:cover" />` : (u.nama||'?').slice(0,1).toUpperCase()}
-          </div>
-          <button onclick="document.getElementById('input-foto-profil').click()" style="position:absolute;bottom:-2px;right:-2px;width:24px;height:24px;border-radius:50%;background:#fff;border:1px solid var(--border);font-size:11px">📷</button>
-          <input type="file" id="input-foto-profil" accept="image/png,image/jpeg,image/webp" class="hidden" />
+        <div style="width:64px;height:64px;border-radius:50%;background:var(--hijau-muda);display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:24px;font-weight:700;color:var(--hijau-tua);flex-shrink:0">
+          ${(u.nama||'?').slice(0,1).toUpperCase()}
         </div>
         <div>
           <p style="font-weight:800;font-size:17px">${escapeHtml(u.nama)}</p>
@@ -1594,27 +1590,6 @@ function renderBarisProfil(label, value, onClick) {
     <span>${escapeHtml(label)}</span>
     <span style="color:var(--hijau-tua);font-size:13px">${escapeHtml(value)} ›</span>
   </div>`;
-}
-
-function after_renderProfil() {
-  const inputFoto = document.getElementById('input-foto-profil');
-  if (inputFoto) inputFoto.addEventListener('change', handleUploadFoto);
-}
-
-async function handleUploadFoto(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  if (file.size > 5 * 1024 * 1024) return showToast('Ukuran foto maksimal 5MB', 'error');
-  const reader = new FileReader();
-  reader.onload = async () => {
-    const base64 = reader.result.split(',')[1];
-    try {
-      await api('/api/profil/foto', { method: 'POST', body: { foto_base64: base64, mime_type: file.type } });
-      showToast('Foto profil berhasil diperbarui', 'success');
-      router();
-    } catch (err) { showToast(err.message, 'error'); }
-  };
-  reader.readAsDataURL(file);
 }
 
 function bukaEditNama() {
