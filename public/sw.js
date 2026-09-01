@@ -1,6 +1,6 @@
 // Naikkan versi ini setiap deploy supaya cache lama otomatis dibuang
 const CACHE_NAME = 'kas-kita-v1';
-const APP_SHELL = ['/', '/index.html', '/manifest.json', '/icon.png'];
+const APP_SHELL = ['/', '/index.html', '/manifest.json', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
