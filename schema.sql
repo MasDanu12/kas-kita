@@ -1,199 +1,146 @@
--- ============================================================
--- KAS KITA — Skema Database D1 (Redesign v3)
--- Berbasis skema acuan lama (kas-kita-database-acuan.sql)
--- Ditambah field baru hasil keputusan redesign 6-mockup
--- ============================================================
+-- Skema database "Kasir HPP" — versi 2 (Bahan Baku → Master Resep → Varian Menu)
+-- Cloudflare D1. Jalankan lewat Console D1 di Cloudflare Dashboard.
+-- PERINGATAN: ini struktur baru total, data lama (resep/produk versi 1) tidak ikut pindah.
 
-PRAGMA foreign_keys = ON;
+DROP TABLE IF EXISTS stok_log;
+DROP TABLE IF EXISTS transaksi_item;
+DROP TABLE IF EXISTS transaksi;
+DROP TABLE IF EXISTS varian_topping;
+DROP TABLE IF EXISTS varian;
+DROP TABLE IF EXISTS resep_bahan;
+DROP TABLE IF EXISTS resep;
+DROP TABLE IF EXISTS bahan_baku;
+DROP TABLE IF EXISTS users;
 
--- ------------------------------------------------------------
--- USERS
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS users (
-  id TEXT PRIMARY KEY,                         -- UUID
-  nama TEXT NOT NULL,
+-- Akun pemilik usaha
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
   email TEXT UNIQUE NOT NULL,
-  password_hash TEXT,                          -- NULL kalau login via Google
-  no_hp TEXT,
-  tema TEXT NOT NULL DEFAULT 'terang' CHECK (tema IN ('terang','gelap')), -- NEW
-  google_id TEXT UNIQUE,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  password_hash TEXT NOT NULL,
+  password_salt TEXT NOT NULL,
+  nama_usaha TEXT DEFAULT 'Usaha Saya',
+  created_at TEXT DEFAULT (datetime('now'))
 );
 
--- ------------------------------------------------------------
--- PASSWORD RESET TOKENS (untuk lupa password via email)
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS password_resets (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  token_hash TEXT NOT NULL,
-  expires_at TEXT NOT NULL,
-  used INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets(user_id);
-
--- ------------------------------------------------------------
--- ORGANIZATIONS
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS organizations (
-  id TEXT PRIMARY KEY,                         -- UUID
+-- ============ 1. MASTER BAHAN BAKU ============
+-- Database harga patokan semua bahan: adonan, topping, maupun kemasan.
+CREATE TABLE bahan_baku (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
   nama TEXT NOT NULL,
-  kode_id TEXT UNIQUE NOT NULL,                 -- NEW: format KITA-{SLUG}-{NNN}
-  created_by TEXT NOT NULL REFERENCES users(id),
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  kategori TEXT NOT NULL DEFAULT 'adonan' CHECK (kategori IN ('adonan','topping','kemasan')),
+  satuan TEXT NOT NULL,                 -- satuan dasar: gr, ml, pcs
+  harga_beli REAL NOT NULL,             -- harga beli per kemasan, misal 11000 untuk 1kg
+  isi_kemasan REAL NOT NULL DEFAULT 1,  -- isi kemasan dalam satuan dasar, misal 1000 (gr)
+  harga_per_satuan REAL NOT NULL,       -- = harga_beli / isi_kemasan
+  stok REAL DEFAULT 0,
+  stok_minimum REAL DEFAULT 0,
+  updated_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id)
 );
-CREATE INDEX IF NOT EXISTS idx_organizations_kode ON organizations(kode_id);
+CREATE INDEX idx_bahan_user ON bahan_baku(user_id);
 
--- ------------------------------------------------------------
--- ORGANIZATION_MEMBERS (relasi user <-> organisasi, semua admin akses sama rata)
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS organization_members (
-  id TEXT PRIMARY KEY,
-  organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  jabatan TEXT NOT NULL DEFAULT 'Anggota',      -- NEW: label tampilan saja, tidak pengaruhi akses
-  joined_at TEXT NOT NULL DEFAULT (datetime('now')),
-  UNIQUE(organization_id, user_id)
-);
-CREATE INDEX IF NOT EXISTS idx_org_members_org ON organization_members(organization_id);
-CREATE INDEX IF NOT EXISTS idx_org_members_user ON organization_members(user_id);
-
--- ------------------------------------------------------------
--- AKUN (akun kas: tunai/bank/e-wallet)
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS akun (
-  id TEXT PRIMARY KEY,
-  organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+-- ============ 2. MASTER RESEP ============
+-- Takaran/komposisi bahan adonan dasar. HPP dihitung per gram adonan.
+-- total_berat diisi MANUAL (hasil timbangan asli adonan jadi), bukan auto-sum bahan mentah,
+-- karena satuan bahan bisa campur (gr/ml/pcs) dan ada penyusutan saat diolah.
+CREATE TABLE resep (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
   nama TEXT NOT NULL,
-  jenis TEXT NOT NULL CHECK (jenis IN ('tunai','bank','e_wallet')),
-  nomor_rekening TEXT,
-  saldo_awal INTEGER NOT NULL DEFAULT 0,        -- dalam rupiah (integer, hindari float)
-  nonaktif INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-CREATE INDEX IF NOT EXISTS idx_akun_org ON akun(organization_id);
-
--- ------------------------------------------------------------
--- KATEGORI (kategori transaksi pengeluaran/pemasukan lain)
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS kategori (
-  id TEXT PRIMARY KEY,
-  organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  nama TEXT NOT NULL,
-  tipe TEXT NOT NULL CHECK (tipe IN ('pemasukan','pengeluaran')),
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  UNIQUE(organization_id, nama, tipe)
-);
-CREATE INDEX IF NOT EXISTS idx_kategori_org ON kategori(organization_id);
-
--- ------------------------------------------------------------
--- ANGGOTA
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS anggota (
-  id TEXT PRIMARY KEY,
-  organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  nama TEXT NOT NULL,
-  no_hp TEXT,
-  tanggal_bergabung TEXT NOT NULL,              -- dasar hitung mulai kewajiban iuran
-  dikeluarkan_at TEXT,                          -- NEW: soft-delete, NULL = masih aktif
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-CREATE INDEX IF NOT EXISTS idx_anggota_org ON anggota(organization_id);
-CREATE INDEX IF NOT EXISTS idx_anggota_aktif ON anggota(organization_id, dikeluarkan_at);
-
--- ------------------------------------------------------------
--- IURAN_SETTINGS (satu baris per organisasi — nominal iuran wajib)
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS iuran_settings (
-  organization_id TEXT PRIMARY KEY REFERENCES organizations(id) ON DELETE CASCADE,
-  nominal_bulanan INTEGER NOT NULL DEFAULT 0,
-  tanggal_mulai_organisasi TEXT NOT NULL,       -- dasar hitung periode iuran pertama
-  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_by TEXT REFERENCES users(id)
-);
-
--- ------------------------------------------------------------
--- IURAN_PEMBAYARAN (satu baris = satu transaksi pembayaran iuran)
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS iuran_pembayaran (
-  id TEXT PRIMARY KEY,
-  organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  anggota_id TEXT NOT NULL REFERENCES anggota(id),
-  akun_id TEXT NOT NULL REFERENCES akun(id),
-  jumlah INTEGER NOT NULL,
-  metode_pembayaran TEXT NOT NULL DEFAULT 'Tunai'
-    CHECK (metode_pembayaran IN ('Tunai','Transfer Bank','QRIS','E-Wallet')), -- NEW
-  tanggal_pembayaran TEXT NOT NULL,
   catatan TEXT,
-  dicatat_oleh TEXT NOT NULL REFERENCES users(id),
-  transaksi_id TEXT REFERENCES transaksi(id),   -- link ke pencatatan kas (1:1, no duplikasi)
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  total_berat REAL NOT NULL DEFAULT 0,
+  total_biaya REAL NOT NULL DEFAULT 0,
+  hpp_per_gram REAL NOT NULL DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id)
 );
-CREATE INDEX IF NOT EXISTS idx_iuran_bayar_org ON iuran_pembayaran(organization_id);
-CREATE INDEX IF NOT EXISTS idx_iuran_bayar_anggota ON iuran_pembayaran(anggota_id);
+CREATE INDEX idx_resep_user ON resep(user_id);
 
--- ------------------------------------------------------------
--- IURAN_ALOKASI (hasil pemecahan 1 pembayaran ke beberapa periode, FIFO)
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS iuran_alokasi (
-  id TEXT PRIMARY KEY,
-  pembayaran_id TEXT NOT NULL REFERENCES iuran_pembayaran(id) ON DELETE CASCADE,
-  anggota_id TEXT NOT NULL REFERENCES anggota(id),
-  periode TEXT NOT NULL,                        -- format 'YYYY-MM'
-  jumlah_dialokasikan INTEGER NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('lunas','sebagian')),
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+-- Komposisi bahan per Master Resep. harga_satuan_saat_itu = snapshot harga bahan saat
+-- resep dibuat/terakhir dihitung ulang -> dipakai untuk deteksi "harga berubah".
+CREATE TABLE resep_bahan (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  resep_id INTEGER NOT NULL,
+  bahan_id INTEGER NOT NULL,
+  qty REAL NOT NULL,
+  harga_satuan_saat_itu REAL NOT NULL,
+  biaya REAL NOT NULL,
+  FOREIGN KEY (resep_id) REFERENCES resep(id) ON DELETE CASCADE,
+  FOREIGN KEY (bahan_id) REFERENCES bahan_baku(id)
 );
-CREATE INDEX IF NOT EXISTS idx_alokasi_anggota_periode ON iuran_alokasi(anggota_id, periode);
 
--- ------------------------------------------------------------
--- TRANSAKSI (buku kas utama: masuk/keluar/transfer/penyesuaian)
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS transaksi (
-  id TEXT PRIMARY KEY,
-  organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  tipe TEXT NOT NULL CHECK (tipe IN ('masuk','keluar','transfer','penyesuaian')),
-  sumber TEXT NOT NULL DEFAULT 'manual'
-    CHECK (sumber IN ('manual','iuran')),       -- pembeda transaksi hasil iuran vs input manual
-  jumlah INTEGER NOT NULL,
-  akun_id TEXT REFERENCES akun(id),             -- akun tunggal (masuk/keluar/penyesuaian)
-  akun_asal_id TEXT REFERENCES akun(id),        -- khusus transfer
-  akun_tujuan_id TEXT REFERENCES akun(id),      -- khusus transfer
-  kategori_id TEXT REFERENCES kategori(id),
-  metode_pembayaran TEXT DEFAULT 'Tunai'
-    CHECK (metode_pembayaran IN ('Tunai','Transfer Bank','QRIS','E-Wallet')), -- NEW
-  keterangan TEXT,
+-- ============ 3. VARIAN MENU ============
+-- Turunan dari 1 Master Resep + topping/kemasan tambahan. Ini yang jadi produk kasir.
+CREATE TABLE varian (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  resep_id INTEGER NOT NULL,
+  nama TEXT NOT NULL,
+  berat_gram REAL NOT NULL,
+  hpp_per_gram_saat_itu REAL NOT NULL,
+  biaya_adonan REAL NOT NULL,
+  biaya_topping REAL NOT NULL DEFAULT 0,
+  hpp_final REAL NOT NULL,
+  harga_jual REAL NOT NULL DEFAULT 0,
+  stok REAL DEFAULT 0,
+  stok_minimum REAL DEFAULT 0,
+  aktif INTEGER DEFAULT 1,
+  urutan INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  FOREIGN KEY (resep_id) REFERENCES resep(id)
+);
+CREATE INDEX idx_varian_user ON varian(user_id);
+
+CREATE TABLE varian_topping (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  varian_id INTEGER NOT NULL,
+  bahan_id INTEGER NOT NULL,
+  qty REAL NOT NULL,
+  harga_satuan_saat_itu REAL NOT NULL,
+  biaya REAL NOT NULL,
+  FOREIGN KEY (varian_id) REFERENCES varian(id) ON DELETE CASCADE,
+  FOREIGN KEY (bahan_id) REFERENCES bahan_baku(id)
+);
+
+-- ============ KASIR ============
+CREATE TABLE transaksi (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  waktu TEXT DEFAULT (datetime('now')),
+  total_jual REAL NOT NULL,
+  total_hpp REAL NOT NULL,
+  total_profit REAL NOT NULL,
+  metode_bayar TEXT DEFAULT 'Tunai',
+  status TEXT DEFAULT 'selesai',
   catatan TEXT,
-  no_referensi TEXT UNIQUE NOT NULL,            -- NEW: format TRX-YYYYMMDD-NNNN untuk struk
-  tanggal TEXT NOT NULL,
-  dicatat_oleh TEXT NOT NULL REFERENCES users(id),
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  FOREIGN KEY (user_id) REFERENCES users(id)
 );
-CREATE INDEX IF NOT EXISTS idx_transaksi_org ON transaksi(organization_id);
-CREATE INDEX IF NOT EXISTS idx_transaksi_tanggal ON transaksi(organization_id, tanggal);
-CREATE INDEX IF NOT EXISTS idx_transaksi_tipe ON transaksi(organization_id, tipe);
+CREATE INDEX idx_transaksi_user_waktu ON transaksi(user_id, waktu);
 
--- ------------------------------------------------------------
--- NOTIFIKASI (in-app saja — anggota menunggak/jatuh tempo/transaksi besar)
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS notifikasi (
-  id TEXT PRIMARY KEY,
-  organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  tipe TEXT NOT NULL CHECK (tipe IN ('menunggak','jatuh_tempo','transaksi_besar')),
-  judul TEXT NOT NULL,
-  pesan TEXT NOT NULL,
-  dibaca INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+CREATE TABLE transaksi_item (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  transaksi_id INTEGER NOT NULL,
+  varian_id INTEGER NOT NULL,
+  nama_varian TEXT NOT NULL,
+  qty REAL NOT NULL,
+  harga_satuan REAL NOT NULL,
+  hpp_satuan REAL NOT NULL,
+  FOREIGN KEY (transaksi_id) REFERENCES transaksi(id) ON DELETE CASCADE,
+  FOREIGN KEY (varian_id) REFERENCES varian(id)
 );
-CREATE INDEX IF NOT EXISTS idx_notifikasi_org ON notifikasi(organization_id, dibaca);
+CREATE INDEX idx_transaksi_item_transaksi ON transaksi_item(transaksi_id);
 
--- ------------------------------------------------------------
--- KATEGORI DEFAULT (di-seed otomatis saat organisasi baru dibuat, lewat kode aplikasi)
--- Referensi saja, bukan dieksekusi di sini:
--- Konsumsi Kegiatan, Transportasi, Perlengkapan, Lainnya (tipe: pengeluaran)
--- ------------------------------------------------------------
+CREATE TABLE stok_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  varian_id INTEGER NOT NULL,
+  perubahan REAL NOT NULL,
+  jenis TEXT NOT NULL,
+  catatan TEXT,
+  waktu TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (varian_id) REFERENCES varian(id)
+);
+CREATE INDEX idx_stok_log_varian ON stok_log(varian_id);

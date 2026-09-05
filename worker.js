@@ -1,1766 +1,577 @@
-// ============================================================
-// KAS KITA — Cloudflare Worker (Redesign v3)
-// Backend tunggal: auth, organisasi, anggota, transaksi, iuran,
-// laporan, profil, notifikasi.
-// Binding yang dibutuhkan (wrangler.toml):
-//   DB           -> D1 Database
-//   JWT_SECRET   -> secret, untuk sign token
-//   MAILCHANNELS_API_KEY -> secret, MailChannels Email API baru
-//   MAIL_FROM    -> var, alamat pengirim terverifikasi
-//   APP_URL      -> var, base URL frontend (untuk link reset password)
-// ============================================================
+/**
+ * Kasir HPP — Cloudflare Worker (v2)
+ * Alur: Master Bahan Baku -> Master Resep (HPP/gram) -> Varian Menu (HPP final) -> Kasir
+ * Database: Cloudflare D1 (binding: DB) | Static assets: binding ASSETS
+ */
 
-// ---------- Helper: Response ----------
-function json(data, status = 200, extraHeaders = {}) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      'Content-Type': 'application/json; charset=utf-8',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Org-Id',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      ...extraHeaders,
-    },
-  });
-}
+// ---------- Util: crypto ----------
 
-function errorResponse(message, status = 400, code = null) {
-  return json({ error: true, message, code }, status);
+function b64urlEncode(buf) {
+  let bin = '';
+  const bytes = new Uint8Array(buf);
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
-
-// ---------- Helper: ID & Kode ----------
-function newId() {
-  return crypto.randomUUID();
-}
-
-function slugify(text) {
-  return text
-    .toString()
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '')
-    .slice(0, 20);
-}
-
-async function generateKodeOrganisasi(db, namaOrganisasi) {
-  const slug = slugify(namaOrganisasi) || 'ORG';
-  for (let attempt = 0; attempt < 50; attempt++) {
-    const nomor = String(attempt + 1).padStart(3, '0');
-    const kode = `KITA-${slug}-${nomor}`;
-    const existing = await db
-      .prepare('SELECT id FROM organizations WHERE kode_id = ?')
-      .bind(kode)
-      .first();
-    if (!existing) return kode;
-  }
-  // fallback kalau 50 percobaan habis (sangat tidak mungkin)
-  return `KITA-${slug}-${Date.now().toString().slice(-6)}`;
-}
-
-async function generateNoReferensi(db, tanggalISO) {
-  const tgl = tanggalISO.replace(/-/g, '').slice(0, 8); // YYYYMMDD
-  const prefix = `TRX-${tgl}-`;
-  const row = await db
-    .prepare(
-      `SELECT no_referensi FROM transaksi
-       WHERE no_referensi LIKE ? ORDER BY no_referensi DESC LIMIT 1`
-    )
-    .bind(prefix + '%')
-    .first();
-  let urut = 1;
-  if (row && row.no_referensi) {
-    const lastUrut = parseInt(row.no_referensi.slice(-4), 10);
-    if (!isNaN(lastUrut)) urut = lastUrut + 1;
-  }
-  return prefix + String(urut).padStart(4, '0');
-}
-
-// ---------- Helper: Password hashing (PBKDF2 via Web Crypto) ----------
-async function hashPassword(password) {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(password),
-    'PBKDF2',
-    false,
-    ['deriveBits']
-  );
-  const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
-    key,
-    256
-  );
-  const hashHex = [...new Uint8Array(bits)].map((b) => b.toString(16).padStart(2, '0')).join('');
-  const saltHex = [...salt].map((b) => b.toString(16).padStart(2, '0')).join('');
-  return `pbkdf2$100000$${saltHex}$${hashHex}`;
-}
-
-async function verifyPassword(password, stored) {
-  if (!stored) return false;
-  const parts = stored.split('$');
-  if (parts.length !== 4 || parts[0] !== 'pbkdf2') return false;
-  const iterations = parseInt(parts[1], 10);
-  const salt = new Uint8Array(parts[2].match(/.{1,2}/g).map((b) => parseInt(b, 16)));
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(password),
-    'PBKDF2',
-    false,
-    ['deriveBits']
-  );
-  const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
-    key,
-    256
-  );
-  const hashHex = [...new Uint8Array(bits)].map((b) => b.toString(16).padStart(2, '0')).join('');
-  return hashHex === parts[3];
-}
-
-// ---------- Helper: JWT (HS256, tanpa library) ----------
-function base64UrlEncode(bytes) {
-  let str = btoa(String.fromCharCode(...bytes));
-  return str.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-function base64UrlDecode(str) {
+function b64urlDecode(str) {
   str = str.replace(/-/g, '+').replace(/_/g, '/');
   while (str.length % 4) str += '=';
   const bin = atob(str);
-  return Uint8Array.from(bin, (c) => c.charCodeAt(0));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
 }
-
-async function signJWT(payload, secret, expiresInSeconds = 60 * 60 * 24 * 30) {
-  const header = { alg: 'HS256', typ: 'JWT' };
-  const now = Math.floor(Date.now() / 1000);
-  const fullPayload = { ...payload, iat: now, exp: now + expiresInSeconds };
-  const encHeader = base64UrlEncode(new TextEncoder().encode(JSON.stringify(header)));
-  const encPayload = base64UrlEncode(new TextEncoder().encode(JSON.stringify(fullPayload)));
-  const data = `${encHeader}.${encPayload}`;
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(data));
-  const encSig = base64UrlEncode(new Uint8Array(sig));
-  return `${data}.${encSig}`;
+async function pbkdf2Hash(password, saltB64) {
+  const enc = new TextEncoder();
+  const salt = saltB64 ? b64urlDecode(saltB64) : crypto.getRandomValues(new Uint8Array(16));
+  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' }, keyMaterial, 256);
+  return { hash: b64urlEncode(bits), salt: b64urlEncode(salt) };
 }
-
-async function verifyJWT(token, secret) {
+async function hmacSign(data, secret) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(data));
+  return b64urlEncode(sig);
+}
+async function createToken(payload, secret) {
+  const header = b64urlEncode(new TextEncoder().encode(JSON.stringify({ alg: 'HS256', typ: 'JWT' })));
+  const body = b64urlEncode(new TextEncoder().encode(JSON.stringify(payload)));
+  const sig = await hmacSign(`${header}.${body}`, secret);
+  return `${header}.${body}.${sig}`;
+}
+async function verifyToken(token, secret) {
+  if (!token) return null;
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  const [header, body, sig] = parts;
+  const expected = await hmacSign(`${header}.${body}`, secret);
+  if (expected !== sig) return null;
   try {
-    const [encHeader, encPayload, encSig] = token.split('.');
-    if (!encHeader || !encPayload || !encSig) return null;
-    const data = `${encHeader}.${encPayload}`;
-    const key = await crypto.subtle.importKey(
-      'raw',
-      new TextEncoder().encode(secret),
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['verify']
-    );
-    const sigBytes = base64UrlDecode(encSig);
-    const valid = await crypto.subtle.verify(
-      'HMAC',
-      key,
-      sigBytes,
-      new TextEncoder().encode(data)
-    );
-    if (!valid) return null;
-    const payload = JSON.parse(new TextDecoder().decode(base64UrlDecode(encPayload)));
-    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
+    const payload = JSON.parse(new TextDecoder().decode(b64urlDecode(body)));
+    if (payload.exp && Date.now() > payload.exp) return null;
     return payload;
-  } catch (e) {
-    return null;
-  }
+  } catch { return null; }
 }
 
-// ---------- Helper: Auth Context ----------
-async function getAuthUser(request, env) {
-  const authHeader = request.headers.get('Authorization') || '';
-  const match = authHeader.match(/^Bearer (.+)$/);
-  if (!match) return null;
-  const payload = await verifyJWT(match[1], env.JWT_SECRET);
-  if (!payload || !payload.sub) return null;
-  const user = await env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(payload.sub).first();
-  return user || null;
+// ---------- Util: HTTP ----------
+
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } });
 }
-
-// Pastikan user adalah anggota organisasi yang diklaim di header X-Org-Id.
-// Mengembalikan organization_id yang TERVALIDASI, bukan sekadar header mentah.
-async function getActiveOrgId(request, env, userId) {
-  const orgId = request.headers.get('X-Org-Id');
-  if (!orgId) return { error: 'X-Org-Id header wajib diisi' };
-  const membership = await env.DB.prepare(
-    'SELECT * FROM organization_members WHERE organization_id = ? AND user_id = ?'
-  )
-    .bind(orgId, userId)
-    .first();
-  if (!membership) return { error: 'Anda bukan anggota organisasi ini' };
-  return { orgId, membership };
+function err(message, status = 400) { return json({ error: message }, status); }
+async function getUser(request, env) {
+  const auth = request.headers.get('Authorization') || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+  const payload = await verifyToken(token, env.JWT_SECRET);
+  if (!payload || !payload.uid) return null;
+  return payload;
 }
-
-// ---------- Helper: Email via MailChannels Email API (baru) ----------
-async function sendEmail(env, { to, subject, html }) {
-  const res = await fetch('https://api.mailchannels.net/tx/v1/send', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Api-Key': env.MAILCHANNELS_API_KEY,
-    },
-    body: JSON.stringify({
-      personalizations: [{ to: [{ email: to }] }],
-      from: { email: env.MAIL_FROM, name: 'Kas Kita' },
-      subject,
-      content: [{ type: 'text/html', value: html }],
-    }),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`Gagal mengirim email (status ${res.status}): ${text}`);
-  }
-  return true;
-}
-
-// ============================================================
-// AUTH ROUTES
-// ============================================================
-async function handleAuth(request, env, path) {
-  // POST /api/auth/register
-  if (path === '/api/auth/register' && request.method === 'POST') {
-    const body = await request.json().catch(() => ({}));
-    const { nama, email, password, no_hp } = body;
-    if (!nama || !email || !password) {
-      return errorResponse('Nama, email, dan password wajib diisi');
-    }
-    if (password.length < 6) {
-      return errorResponse('Password minimal 6 karakter');
-    }
-    const existing = await env.DB.prepare('SELECT id FROM users WHERE email = ?')
-      .bind(email.toLowerCase())
-      .first();
-    if (existing) return errorResponse('Email sudah terdaftar', 409);
-
-    const id = newId();
-    const passwordHash = await hashPassword(password);
-    await env.DB.prepare(
-      `INSERT INTO users (id, nama, email, password_hash, no_hp) VALUES (?, ?, ?, ?, ?)`
-    )
-      .bind(id, nama, email.toLowerCase(), passwordHash, no_hp || null)
-      .run();
-
-    const token = await signJWT({ sub: id }, env.JWT_SECRET);
-    return json({ token, user: { id, nama, email: email.toLowerCase() } }, 201);
-  }
-
-  // POST /api/auth/login
-  if (path === '/api/auth/login' && request.method === 'POST') {
-    const body = await request.json().catch(() => ({}));
-    const { email, password, ingat_saya } = body;
-    if (!email || !password) return errorResponse('Email dan password wajib diisi');
-
-    const user = await env.DB.prepare('SELECT * FROM users WHERE email = ?')
-      .bind(email.toLowerCase())
-      .first();
-    if (!user) return errorResponse('Email atau password salah', 401);
-
-    const valid = await verifyPassword(password, user.password_hash);
-    if (!valid) return errorResponse('Email atau password salah', 401);
-
-    const expiresIn = ingat_saya ? 60 * 60 * 24 * 90 : 60 * 60 * 24 * 7;
-    const token = await signJWT({ sub: user.id }, env.JWT_SECRET, expiresIn);
-    return json({
-      token,
-      user: { id: user.id, nama: user.nama, email: user.email },
-    });
-  }
-
-  // POST /api/auth/google  (menerima id_token dari Google Sign-In, diverifikasi via tokeninfo)
-  if (path === '/api/auth/google' && request.method === 'POST') {
-    const body = await request.json().catch(() => ({}));
-    const { id_token } = body;
-    if (!id_token) return errorResponse('id_token wajib diisi');
-
-    const verifyRes = await fetch(
-      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(id_token)}`
-    );
-    if (!verifyRes.ok) return errorResponse('Token Google tidak valid', 401);
-    const payload = await verifyRes.json();
-    const googleId = payload.sub;
-    const email = (payload.email || '').toLowerCase();
-    const nama = payload.name || email.split('@')[0];
-
-    if (!googleId || !email) return errorResponse('Token Google tidak valid', 401);
-
-    let user = await env.DB.prepare('SELECT * FROM users WHERE google_id = ? OR email = ?')
-      .bind(googleId, email)
-      .first();
-
-    if (!user) {
-      const id = newId();
-      await env.DB.prepare(
-        `INSERT INTO users (id, nama, email, google_id) VALUES (?, ?, ?, ?)`
-      )
-        .bind(id, nama, email, googleId)
-        .run();
-      user = { id, nama, email };
-    } else if (!user.google_id) {
-      // akun lama daftar manual, sekarang login pakai Google dengan email sama -> tautkan
-      await env.DB.prepare('UPDATE users SET google_id = ? WHERE id = ?')
-        .bind(googleId, user.id)
-        .run();
-    }
-
-    const token = await signJWT({ sub: user.id }, env.JWT_SECRET);
-    return json({ token, user: { id: user.id, nama: user.nama, email: user.email } });
-  }
-
-  // POST /api/auth/forgot-password
-  if (path === '/api/auth/forgot-password' && request.method === 'POST') {
-    const body = await request.json().catch(() => ({}));
-    const { email } = body;
-    if (!email) return errorResponse('Email wajib diisi');
-
-    const user = await env.DB.prepare('SELECT * FROM users WHERE email = ?')
-      .bind(email.toLowerCase())
-      .first();
-
-    // Selalu balas sukses walau email tidak ditemukan (hindari enumerasi akun)
-    if (!user) return json({ message: 'Kalau email terdaftar, link reset sudah dikirim' });
-
-    const rawToken = base64UrlEncode(crypto.getRandomValues(new Uint8Array(32)));
-    const tokenHash = await hashPassword(rawToken); // reuse PBKDF2 sebagai hash token
-    const id = newId();
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 jam
-
-    await env.DB.prepare(
-      `INSERT INTO password_resets (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)`
-    )
-      .bind(id, user.id, tokenHash, expiresAt)
-      .run();
-
-    const resetLink = `${env.APP_URL}/reset-password?token=${rawToken}&uid=${user.id}`;
-    try {
-      await sendEmail(env, {
-        to: user.email,
-        subject: 'Reset Password Kas Kita',
-        html: `<p>Halo ${user.nama},</p><p>Klik link berikut untuk reset password (berlaku 1 jam):</p><p><a href="${resetLink}">${resetLink}</a></p><p>Kalau Anda tidak meminta ini, abaikan email ini.</p>`,
-      });
-    } catch (e) {
-      return errorResponse('Gagal mengirim email reset. Coba lagi nanti.', 502);
-    }
-
-    return json({ message: 'Kalau email terdaftar, link reset sudah dikirim' });
-  }
-
-  // POST /api/auth/reset-password
-  if (path === '/api/auth/reset-password' && request.method === 'POST') {
-    const body = await request.json().catch(() => ({}));
-    const { uid, token, password_baru } = body;
-    if (!uid || !token || !password_baru) return errorResponse('Data tidak lengkap');
-    if (password_baru.length < 6) return errorResponse('Password minimal 6 karakter');
-
-    const resets = await env.DB.prepare(
-      `SELECT * FROM password_resets WHERE user_id = ? AND used = 0 AND expires_at > datetime('now') ORDER BY created_at DESC`
-    )
-      .bind(uid)
-      .all();
-
-    let matched = null;
-    for (const row of resets.results || []) {
-      if (await verifyPassword(token, row.token_hash)) {
-        matched = row;
-        break;
-      }
-    }
-    if (!matched) return errorResponse('Token reset tidak valid atau sudah kedaluwarsa', 400);
-
-    const newHash = await hashPassword(password_baru);
-    await env.DB.prepare('UPDATE users SET password_hash = ?, updated_at = datetime("now") WHERE id = ?')
-      .bind(newHash, uid)
-      .run();
-    await env.DB.prepare('UPDATE password_resets SET used = 1 WHERE id = ?').bind(matched.id).run();
-
-    return json({ message: 'Password berhasil diubah' });
-  }
-
-  return errorResponse('Endpoint auth tidak ditemukan', 404);
-}
-
-// ============================================================
-// ORGANIZATIONS ROUTES
-// ============================================================
-async function handleOrganizations(request, env, path, user) {
-  // GET /api/organizations  -> daftar organisasi milik user (untuk pilih saat login/switch)
-  if (path === '/api/organizations' && request.method === 'GET') {
-    const rows = await env.DB.prepare(
-      `SELECT o.id, o.nama, o.kode_id, m.jabatan
-       FROM organizations o
-       JOIN organization_members m ON m.organization_id = o.id
-       WHERE m.user_id = ?
-       ORDER BY o.nama`
-    )
-      .bind(user.id)
-      .all();
-    return json({ organizations: rows.results || [] });
-  }
-
-  // POST /api/organizations  (buat organisasi baru)
-  if (path === '/api/organizations' && request.method === 'POST') {
-    const body = await request.json().catch(() => ({}));
-    const { nama } = body;
-    if (!nama || !nama.trim()) return errorResponse('Nama organisasi wajib diisi');
-
-    const id = newId();
-    const kodeId = await generateKodeOrganisasi(env.DB, nama.trim());
-    const now = new Date().toISOString();
-
-    await env.DB.batch([
-      env.DB.prepare(
-        `INSERT INTO organizations (id, nama, kode_id, created_by) VALUES (?, ?, ?, ?)`
-      ).bind(id, nama.trim(), kodeId, user.id),
-      env.DB.prepare(
-        `INSERT INTO organization_members (id, organization_id, user_id, jabatan) VALUES (?, ?, ?, ?)`
-      ).bind(newId(), id, user.id, 'Ketua Organisasi'),
-      env.DB.prepare(
-        `INSERT INTO iuran_settings (organization_id, nominal_bulanan, tanggal_mulai_organisasi, updated_by)
-         VALUES (?, 0, ?, ?)`
-      ).bind(id, now.slice(0, 10), user.id),
-    ]);
-
-    // Seed kategori default (pengeluaran)
-    const defaultKategori = ['Konsumsi Kegiatan', 'Transportasi', 'Perlengkapan', 'Lainnya'];
-    const seedStmts = defaultKategori.map((namaKategori) =>
-      env.DB.prepare(
-        `INSERT INTO kategori (id, organization_id, nama, tipe) VALUES (?, ?, ?, 'pengeluaran')`
-      ).bind(newId(), id, namaKategori)
-    );
-    await env.DB.batch(seedStmts);
-
-    // Seed akun default: Kas Tunai
-    await env.DB.prepare(
-      `INSERT INTO akun (id, organization_id, nama, jenis, saldo_awal) VALUES (?, ?, 'Kas Tunai', 'tunai', 0)`
-    )
-      .bind(newId(), id)
-      .run();
-
-    return json({ organization: { id, nama: nama.trim(), kode_id: kodeId } }, 201);
-  }
-
-  // POST /api/organizations/gabung  (join pakai kode_id)
-  if (path === '/api/organizations/gabung' && request.method === 'POST') {
-    const body = await request.json().catch(() => ({}));
-    const { kode_id } = body;
-    if (!kode_id || !kode_id.trim()) return errorResponse('Kode organisasi wajib diisi');
-
-    const org = await env.DB.prepare('SELECT * FROM organizations WHERE kode_id = ?')
-      .bind(kode_id.trim().toUpperCase())
-      .first();
-    if (!org) return errorResponse('Kode organisasi tidak ditemukan', 404);
-
-    const existing = await env.DB.prepare(
-      'SELECT id FROM organization_members WHERE organization_id = ? AND user_id = ?'
-    )
-      .bind(org.id, user.id)
-      .first();
-    if (existing) return errorResponse('Anda sudah tergabung di organisasi ini', 409);
-
-    await env.DB.prepare(
-      `INSERT INTO organization_members (id, organization_id, user_id, jabatan) VALUES (?, ?, ?, 'Anggota')`
-    )
-      .bind(newId(), org.id, user.id)
-      .run();
-
-    return json({ organization: { id: org.id, nama: org.nama, kode_id: org.kode_id } }, 201);
-  }
-
-  return errorResponse('Endpoint organizations tidak ditemukan', 404);
-}
-
-// ============================================================
-// PROFIL ROUTES (butuh user, tidak semuanya butuh org aktif)
-// ============================================================
-async function handleProfil(request, env, path, user, orgCtx) {
-  // GET /api/profil
-  if (path === '/api/profil' && request.method === 'GET') {
-    let jabatan = null;
-    if (orgCtx && orgCtx.orgId) {
-      jabatan = orgCtx.membership.jabatan;
-    }
-    return json({
-      user: {
-        id: user.id,
-        nama: user.nama,
-        email: user.email,
-        no_hp: user.no_hp,
-        tema: user.tema,
-        created_at: user.created_at,
-      },
-      jabatan,
-    });
-  }
-
-  // PUT /api/profil  (edit nama / no_hp / tema)
-  if (path === '/api/profil' && request.method === 'PUT') {
-    const body = await request.json().catch(() => ({}));
-    const fields = [];
-    const values = [];
-    if (typeof body.nama === 'string' && body.nama.trim()) {
-      fields.push('nama = ?');
-      values.push(body.nama.trim());
-    }
-    if (typeof body.no_hp === 'string') {
-      fields.push('no_hp = ?');
-      values.push(body.no_hp);
-    }
-    if (body.tema === 'terang' || body.tema === 'gelap') {
-      fields.push('tema = ?');
-      values.push(body.tema);
-    }
-    if (fields.length === 0) return errorResponse('Tidak ada data untuk diubah');
-    fields.push('updated_at = datetime("now")');
-    values.push(user.id);
-    await env.DB.prepare(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`).bind(...values).run();
-    return json({ message: 'Profil berhasil diperbarui' });
-  }
-
-  // PUT /api/profil/jabatan  (label tampilan saja, khusus org aktif)
-  if (path === '/api/profil/jabatan' && request.method === 'PUT') {
-    if (!orgCtx || !orgCtx.orgId) return errorResponse('Organisasi aktif tidak ditemukan', 400);
-    const body = await request.json().catch(() => ({}));
-    if (!body.jabatan || !body.jabatan.trim()) return errorResponse('Jabatan wajib diisi');
-    await env.DB.prepare(
-      'UPDATE organization_members SET jabatan = ? WHERE organization_id = ? AND user_id = ?'
-    )
-      .bind(body.jabatan.trim(), orgCtx.orgId, user.id)
-      .run();
-    return json({ message: 'Jabatan berhasil diperbarui' });
-  }
-
-  // PUT /api/profil/email
-  if (path === '/api/profil/email' && request.method === 'PUT') {
-    const body = await request.json().catch(() => ({}));
-    const { email_baru, password } = body;
-    if (!email_baru || !password) return errorResponse('Email baru dan password wajib diisi');
-    const valid = await verifyPassword(password, user.password_hash);
-    if (!valid) return errorResponse('Password salah', 401);
-    const existing = await env.DB.prepare('SELECT id FROM users WHERE email = ? AND id != ?')
-      .bind(email_baru.toLowerCase(), user.id)
-      .first();
-    if (existing) return errorResponse('Email sudah dipakai akun lain', 409);
-    await env.DB.prepare('UPDATE users SET email = ?, updated_at = datetime("now") WHERE id = ?')
-      .bind(email_baru.toLowerCase(), user.id)
-      .run();
-    return json({ message: 'Email berhasil diubah' });
-  }
-
-  // PUT /api/profil/password
-  if (path === '/api/profil/password' && request.method === 'PUT') {
-    const body = await request.json().catch(() => ({}));
-    const { password_lama, password_baru } = body;
-    if (!password_lama || !password_baru) return errorResponse('Data tidak lengkap');
-    if (password_baru.length < 6) return errorResponse('Password baru minimal 6 karakter');
-    const valid = await verifyPassword(password_lama, user.password_hash);
-    if (!valid) return errorResponse('Password lama salah', 401);
-    const newHash = await hashPassword(password_baru);
-    await env.DB.prepare('UPDATE users SET password_hash = ?, updated_at = datetime("now") WHERE id = ?')
-      .bind(newHash, user.id)
-      .run();
-    return json({ message: 'Password berhasil diubah' });
-  }
-
-  return errorResponse('Endpoint profil tidak ditemukan', 404);
-}
-
-// ============================================================
-// AKUN (KAS) ROUTES — butuh org aktif
-// ============================================================
-async function handleAkun(request, env, path, orgId, user) {
-  // GET /api/akun  -> list akun + saldo terhitung otomatis
-  if (path === '/api/akun' && request.method === 'GET') {
-    const akunList = await env.DB.prepare(
-      'SELECT * FROM akun WHERE organization_id = ? ORDER BY created_at'
-    )
-      .bind(orgId)
-      .all();
-
-    const hasil = [];
-    let totalSaldo = 0;
-    for (const akun of akunList.results || []) {
-      const saldo = await hitungSaldoAkun(env.DB, akun);
-      hasil.push({ ...akun, saldo });
-      totalSaldo += saldo;
-    }
-    return json({ akun: hasil, total_saldo: totalSaldo });
-  }
-
-  // POST /api/akun
-  if (path === '/api/akun' && request.method === 'POST') {
-    const body = await request.json().catch(() => ({}));
-    const { nama, jenis, nomor_rekening, saldo_awal } = body;
-    if (!nama || !jenis) return errorResponse('Nama dan jenis akun wajib diisi');
-    if (!['tunai', 'bank', 'e_wallet'].includes(jenis)) return errorResponse('Jenis akun tidak valid');
-
-    const id = newId();
-    await env.DB.prepare(
-      `INSERT INTO akun (id, organization_id, nama, jenis, nomor_rekening, saldo_awal)
-       VALUES (?, ?, ?, ?, ?, ?)`
-    )
-      .bind(id, orgId, nama.trim(), jenis, nomor_rekening || null, saldo_awal || 0)
-      .run();
-    return json({ id }, 201);
-  }
-
-  // PUT /api/akun/:id
-  const putMatch = path.match(/^\/api\/akun\/([^/]+)$/);
-  if (putMatch && request.method === 'PUT') {
-    const akunId = putMatch[1];
-    const akun = await env.DB.prepare('SELECT * FROM akun WHERE id = ? AND organization_id = ?')
-      .bind(akunId, orgId)
-      .first();
-    if (!akun) return errorResponse('Akun tidak ditemukan', 404);
-
-    const body = await request.json().catch(() => ({}));
-    const fields = [];
-    const values = [];
-    if (typeof body.nama === 'string' && body.nama.trim()) {
-      fields.push('nama = ?');
-      values.push(body.nama.trim());
-    }
-    if (typeof body.nomor_rekening === 'string') {
-      fields.push('nomor_rekening = ?');
-      values.push(body.nomor_rekening);
-    }
-    if (typeof body.nonaktif === 'boolean') {
-      fields.push('nonaktif = ?');
-      values.push(body.nonaktif ? 1 : 0);
-    }
-    if (fields.length === 0) return errorResponse('Tidak ada data untuk diubah');
-    fields.push('updated_at = datetime("now")');
-    values.push(akunId, orgId);
-    await env.DB.prepare(
-      `UPDATE akun SET ${fields.join(', ')} WHERE id = ? AND organization_id = ?`
-    ).bind(...values).run();
-    return json({ message: 'Akun berhasil diperbarui' });
-  }
-
-  // DELETE /api/akun/:id  (hanya boleh kalau belum pernah dipakai transaksi)
-  const delMatch = path.match(/^\/api\/akun\/([^/]+)$/);
-  if (delMatch && request.method === 'DELETE') {
-    const akunId = delMatch[1];
-    const dipakai = await env.DB.prepare(
-      `SELECT id FROM transaksi WHERE organization_id = ? AND
-       (akun_id = ? OR akun_asal_id = ? OR akun_tujuan_id = ?) LIMIT 1`
-    )
-      .bind(orgId, akunId, akunId, akunId)
-      .first();
-    if (dipakai) {
-      return errorResponse(
-        'Akun ini sudah punya riwayat transaksi, tidak bisa dihapus. Nonaktifkan saja.',
-        409
-      );
-    }
-    await env.DB.prepare('DELETE FROM akun WHERE id = ? AND organization_id = ?')
-      .bind(akunId, orgId)
-      .run();
-    return json({ message: 'Akun berhasil dihapus' });
-  }
-
-  return errorResponse('Endpoint akun tidak ditemukan', 404);
-}
-
-// Hitung saldo akun = saldo_awal + semua transaksi yang menyentuh akun ini
-async function hitungSaldoAkun(db, akun) {
-  let saldo = akun.saldo_awal;
-
-  const masuk = await db
-    .prepare(
-      `SELECT COALESCE(SUM(jumlah),0) as total FROM transaksi
-       WHERE akun_id = ? AND tipe IN ('masuk','penyesuaian') AND jumlah > 0`
-    )
-    .bind(akun.id)
-    .first();
-  saldo += masuk.total || 0;
-
-  const keluar = await db
-    .prepare(
-      `SELECT COALESCE(SUM(jumlah),0) as total FROM transaksi
-       WHERE akun_id = ? AND tipe = 'keluar'`
-    )
-    .bind(akun.id)
-    .first();
-  saldo -= keluar.total || 0;
-
-  const penyesuaianNegatif = await db
-    .prepare(
-      `SELECT COALESCE(SUM(jumlah),0) as total FROM transaksi
-       WHERE akun_id = ? AND tipe = 'penyesuaian' AND jumlah < 0`
-    )
-    .bind(akun.id)
-    .first();
-  // sudah tercakup di 'masuk' filter jumlah>0 di atas jadi penyesuaian negatif perlu dikurangi terpisah
-  saldo += penyesuaianNegatif.total || 0; // total ini negatif, jadi menambah = mengurangi
-
-  const transferKeluar = await db
-    .prepare(
-      `SELECT COALESCE(SUM(jumlah),0) as total FROM transaksi
-       WHERE akun_asal_id = ? AND tipe = 'transfer'`
-    )
-    .bind(akun.id)
-    .first();
-  saldo -= transferKeluar.total || 0;
-
-  const transferMasuk = await db
-    .prepare(
-      `SELECT COALESCE(SUM(jumlah),0) as total FROM transaksi
-       WHERE akun_tujuan_id = ? AND tipe = 'transfer'`
-    )
-    .bind(akun.id)
-    .first();
-  saldo += transferMasuk.total || 0;
-
-  return saldo;
-}
-
-// ============================================================
-// KATEGORI ROUTES
-// ============================================================
-async function handleKategori(request, env, path, orgId) {
-  if (path === '/api/kategori' && request.method === 'GET') {
-    const url = new URL(request.url);
-    const tipe = url.searchParams.get('tipe');
-    let query = 'SELECT * FROM kategori WHERE organization_id = ?';
-    const params = [orgId];
-    if (tipe) {
-      query += ' AND tipe = ?';
-      params.push(tipe);
-    }
-    query += ' ORDER BY nama';
-    const rows = await env.DB.prepare(query).bind(...params).all();
-    return json({ kategori: rows.results || [] });
-  }
-
-  if (path === '/api/kategori' && request.method === 'POST') {
-    const body = await request.json().catch(() => ({}));
-    const { nama, tipe } = body;
-    if (!nama || !nama.trim()) return errorResponse('Nama kategori wajib diisi');
-    if (!['pemasukan', 'pengeluaran'].includes(tipe)) return errorResponse('Tipe kategori tidak valid');
-
-    const existing = await env.DB.prepare(
-      'SELECT id FROM kategori WHERE organization_id = ? AND nama = ? AND tipe = ?'
-    )
-      .bind(orgId, nama.trim(), tipe)
-      .first();
-    if (existing) return errorResponse('Kategori ini sudah ada', 409);
-
-    const id = newId();
-    await env.DB.prepare(
-      'INSERT INTO kategori (id, organization_id, nama, tipe) VALUES (?, ?, ?, ?)'
-    )
-      .bind(id, orgId, nama.trim(), tipe)
-      .run();
-    return json({ id, nama: nama.trim(), tipe }, 201);
-  }
-
-  const delMatch = path.match(/^\/api\/kategori\/([^/]+)$/);
-  if (delMatch && request.method === 'DELETE') {
-    const kategoriId = delMatch[1];
-    const dipakai = await env.DB.prepare(
-      'SELECT id FROM transaksi WHERE organization_id = ? AND kategori_id = ? LIMIT 1'
-    )
-      .bind(orgId, kategoriId)
-      .first();
-    if (dipakai) return errorResponse('Kategori ini sudah dipakai transaksi, tidak bisa dihapus', 409);
-    await env.DB.prepare('DELETE FROM kategori WHERE id = ? AND organization_id = ?')
-      .bind(kategoriId, orgId)
-      .run();
-    return json({ message: 'Kategori berhasil dihapus' });
-  }
-
-  return errorResponse('Endpoint kategori tidak ditemukan', 404);
-}
-
-// ============================================================
-// ANGGOTA ROUTES
-// ============================================================
-async function handleAnggota(request, env, path, orgId, user) {
-  // GET /api/anggota  -> list + search + pagination + statistik header
-  if (path === '/api/anggota' && request.method === 'GET') {
-    const url = new URL(request.url);
-    const search = url.searchParams.get('search') || '';
-    const page = parseInt(url.searchParams.get('page') || '1', 10);
-    const perPage = parseInt(url.searchParams.get('per_page') || '6', 10);
-
-    let query = `SELECT * FROM anggota WHERE organization_id = ? AND dikeluarkan_at IS NULL`;
-    const params = [orgId];
-    if (search) {
-      query += ` AND (nama LIKE ? OR no_hp LIKE ?)`;
-      params.push(`%${search}%`, `%${search}%`);
-    }
-
-    const countRow = await env.DB.prepare(
-      query.replace('SELECT *', 'SELECT COUNT(*) as total')
-    )
-      .bind(...params)
-      .first();
-    const total = countRow.total || 0;
-
-    query += ' ORDER BY nama LIMIT ? OFFSET ?';
-    params.push(perPage, (page - 1) * perPage);
-    const rows = await env.DB.prepare(query).bind(...params).all();
-
-    const settings = await env.DB.prepare(
-      'SELECT * FROM iuran_settings WHERE organization_id = ?'
-    )
-      .bind(orgId)
-      .first();
-
-    const anggotaDenganStatus = [];
-    for (const a of rows.results || []) {
-      const status = await hitungStatusIuran(env.DB, a, settings, orgId);
-      anggotaDenganStatus.push({ ...a, status_iuran: status });
-    }
-
-    // Statistik ringkas header
-    const semuaAnggota = await env.DB.prepare(
-      'SELECT * FROM anggota WHERE organization_id = ? AND dikeluarkan_at IS NULL'
-    )
-      .bind(orgId)
-      .all();
-    let sudahBayar = 0;
-    let menunggak = 0;
-    let totalIuranBulanIni = 0;
-    const bulanIni = new Date().toISOString().slice(0, 7);
-    for (const a of semuaAnggota.results || []) {
-      const status = await hitungStatusIuran(env.DB, a, settings, orgId);
-      if (status.status_bulan_ini === 'lunas') sudahBayar++;
-      else menunggak++;
-    }
-    const totalIuranRow = await env.DB.prepare(
-      `SELECT COALESCE(SUM(jumlah_dialokasikan),0) as total FROM iuran_alokasi
-       WHERE anggota_id IN (SELECT id FROM anggota WHERE organization_id = ?) AND periode = ?`
-    )
-      .bind(orgId, bulanIni)
-      .first();
-    totalIuranBulanIni = totalIuranRow.total || 0;
-
-    return json({
-      anggota: anggotaDenganStatus,
-      pagination: { page, per_page: perPage, total },
-      statistik: {
-        total_anggota: semuaAnggota.results.length,
-        sudah_bayar: sudahBayar,
-        menunggak,
-        total_iuran_bulan_ini: totalIuranBulanIni,
-      },
-    });
-  }
-
-  // POST /api/anggota
-  if (path === '/api/anggota' && request.method === 'POST') {
-    const body = await request.json().catch(() => ({}));
-    const { nama, no_hp, tanggal_bergabung } = body;
-    if (!nama || !nama.trim()) return errorResponse('Nama anggota wajib diisi');
-    if (!tanggal_bergabung) return errorResponse('Tanggal bergabung wajib diisi');
-
-    const id = newId();
-    await env.DB.prepare(
-      `INSERT INTO anggota (id, organization_id, nama, no_hp, tanggal_bergabung)
-       VALUES (?, ?, ?, ?, ?)`
-    )
-      .bind(id, orgId, nama.trim(), no_hp || null, tanggal_bergabung)
-      .run();
-    return json({ id }, 201);
-  }
-
-  // PUT /api/anggota/:id
-  const putMatch = path.match(/^\/api\/anggota\/([^/]+)$/);
-  if (putMatch && request.method === 'PUT') {
-    const anggotaId = putMatch[1];
-    const anggota = await env.DB.prepare(
-      'SELECT * FROM anggota WHERE id = ? AND organization_id = ?'
-    )
-      .bind(anggotaId, orgId)
-      .first();
-    if (!anggota) return errorResponse('Anggota tidak ditemukan', 404);
-
-    const body = await request.json().catch(() => ({}));
-    const fields = [];
-    const values = [];
-    if (typeof body.nama === 'string' && body.nama.trim()) {
-      fields.push('nama = ?');
-      values.push(body.nama.trim());
-    }
-    if (typeof body.no_hp === 'string') {
-      fields.push('no_hp = ?');
-      values.push(body.no_hp);
-    }
-    if (typeof body.tanggal_bergabung === 'string' && body.tanggal_bergabung) {
-      fields.push('tanggal_bergabung = ?');
-      values.push(body.tanggal_bergabung);
-    }
-    if (fields.length === 0) return errorResponse('Tidak ada data untuk diubah');
-    fields.push('updated_at = datetime("now")');
-    values.push(anggotaId, orgId);
-    await env.DB.prepare(
-      `UPDATE anggota SET ${fields.join(', ')} WHERE id = ? AND organization_id = ?`
-    ).bind(...values).run();
-    return json({ message: 'Data anggota berhasil diperbarui' });
-  }
-
-  // DELETE /api/anggota/:id  -> soft delete (dikeluarkan_at), riwayat transaksi TETAP ada
-  const delMatch = path.match(/^\/api\/anggota\/([^/]+)$/);
-  if (delMatch && request.method === 'DELETE') {
-    const anggotaId = delMatch[1];
-    const anggota = await env.DB.prepare(
-      'SELECT * FROM anggota WHERE id = ? AND organization_id = ?'
-    )
-      .bind(anggotaId, orgId)
-      .first();
-    if (!anggota) return errorResponse('Anggota tidak ditemukan', 404);
-    await env.DB.prepare(
-      'UPDATE anggota SET dikeluarkan_at = datetime("now") WHERE id = ? AND organization_id = ?'
-    )
-      .bind(anggotaId, orgId)
-      .run();
-    return json({ message: 'Anggota berhasil dikeluarkan. Riwayat transaksinya tetap tersimpan.' });
-  }
-
-  // GET /api/anggota/:id/riwayat  -> riwayat pembayaran iuran per anggota
-  const riwayatMatch = path.match(/^\/api\/anggota\/([^/]+)\/riwayat$/);
-  if (riwayatMatch && request.method === 'GET') {
-    const anggotaId = riwayatMatch[1];
-    const anggota = await env.DB.prepare(
-      'SELECT * FROM anggota WHERE id = ? AND organization_id = ?'
-    )
-      .bind(anggotaId, orgId)
-      .first();
-    if (!anggota) return errorResponse('Anggota tidak ditemukan', 404);
-
-    const pembayaran = await env.DB.prepare(
-      `SELECT p.*, GROUP_CONCAT(a.periode || ':' || a.jumlah_dialokasikan || ':' || a.status) as alokasi
-       FROM iuran_pembayaran p
-       LEFT JOIN iuran_alokasi a ON a.pembayaran_id = p.id
-       WHERE p.anggota_id = ? AND p.organization_id = ?
-       GROUP BY p.id
-       ORDER BY p.tanggal_pembayaran DESC`
-    )
-      .bind(anggotaId, orgId)
-      .all();
-
-    const settings = await env.DB.prepare(
-      'SELECT * FROM iuran_settings WHERE organization_id = ?'
-    )
-      .bind(orgId)
-      .first();
-    const status = await hitungStatusIuran(env.DB, anggota, settings, orgId);
-
-    return json({
-      anggota,
-      status_iuran: status,
-      riwayat_pembayaran: (pembayaran.results || []).map((p) => ({
-        ...p,
-        alokasi: p.alokasi
-          ? p.alokasi.split(',').map((s) => {
-              const [periode, jumlah, st] = s.split(':');
-              return { periode, jumlah_dialokasikan: parseInt(jumlah, 10), status: st };
-            })
-          : [],
-      })),
-    });
-  }
-
-  return errorResponse('Endpoint anggota tidak ditemukan', 404);
-}
-
-// Hitung status iuran anggota: tunggakan berapa bulan/rupiah, terakhir bayar, lunas sampai kapan
-async function hitungStatusIuran(db, anggota, settings, orgId) {
-  if (!settings || !settings.nominal_bulanan || settings.nominal_bulanan <= 0) {
-    return {
-      status_bulan_ini: 'tidak_dikenakan',
-      lunas_sampai: null,
-      tunggakan_bulan: 0,
-      tunggakan_rupiah: 0,
-      terakhir_bayar: null,
-    };
-  }
-
-  // Periode wajib bayar: mulai dari MAX(tanggal_bergabung anggota, tanggal_mulai_organisasi)
-  const mulaiAnggota = anggota.tanggal_bergabung > settings.tanggal_mulai_organisasi
-    ? anggota.tanggal_bergabung
-    : settings.tanggal_mulai_organisasi;
-
-  const periodeList = generatePeriodeList(mulaiAnggota, new Date().toISOString().slice(0, 10));
-
-  const alokasiRows = await db
-    .prepare(
-      `SELECT periode, SUM(jumlah_dialokasikan) as total FROM iuran_alokasi
-       WHERE anggota_id = ? GROUP BY periode`
-    )
-    .bind(anggota.id)
-    .all();
-  const alokasiMap = {};
-  for (const row of alokasiRows.results || []) alokasiMap[row.periode] = row.total;
-
-  let tunggakanBulan = 0;
-  let tunggakanRupiah = 0;
-  let lunasSampai = null;
-  let statusBulanIni = 'lunas';
-  const bulanIni = new Date().toISOString().slice(0, 7);
-
-  for (const periode of periodeList) {
-    const dibayar = alokasiMap[periode] || 0;
-    const kurang = settings.nominal_bulanan - dibayar;
-    if (kurang > 0) {
-      tunggakanBulan++;
-      tunggakanRupiah += kurang;
-      if (periode === bulanIni) statusBulanIni = dibayar > 0 ? 'sebagian' : 'belum_bayar';
-      else statusBulanIni = 'belum_bayar'; // ada tunggakan periode lama -> anggap belum lunas
-    } else {
-      lunasSampai = periode;
-    }
-  }
-  if (tunggakanBulan === 0) statusBulanIni = 'lunas';
-
-  const terakhirBayarRow = await db
-    .prepare(
-      `SELECT tanggal_pembayaran FROM iuran_pembayaran WHERE anggota_id = ?
-       ORDER BY tanggal_pembayaran DESC LIMIT 1`
-    )
-    .bind(anggota.id)
-    .first();
-
-  return {
-    status_bulan_ini: statusBulanIni,
-    lunas_sampai: lunasSampai,
-    tunggakan_bulan: tunggakanBulan,
-    tunggakan_rupiah: tunggakanRupiah,
-    terakhir_bayar: terakhirBayarRow ? terakhirBayarRow.tanggal_pembayaran : null,
-  };
-}
-
-// Generate list periode 'YYYY-MM' dari mulai s.d. sekarang (inklusif)
-function generatePeriodeList(tanggalMulai, tanggalSekarang) {
-  const hasil = [];
-  const mulai = new Date(tanggalMulai + 'T00:00:00Z');
-  const sekarang = new Date(tanggalSekarang + 'T00:00:00Z');
-  let cursor = new Date(Date.UTC(mulai.getUTCFullYear(), mulai.getUTCMonth(), 1));
-  const batas = new Date(Date.UTC(sekarang.getUTCFullYear(), sekarang.getUTCMonth(), 1));
-  while (cursor <= batas) {
-    const y = cursor.getUTCFullYear();
-    const m = String(cursor.getUTCMonth() + 1).padStart(2, '0');
-    hasil.push(`${y}-${m}`);
-    cursor.setUTCMonth(cursor.getUTCMonth() + 1);
-  }
-  return hasil;
-}
-
-// ============================================================
-// IURAN ROUTES (settings & pembayaran)
-// ============================================================
-async function handleIuran(request, env, path, orgId, user) {
-  // GET /api/iuran/settings
-  if (path === '/api/iuran/settings' && request.method === 'GET') {
-    const settings = await env.DB.prepare(
-      'SELECT * FROM iuran_settings WHERE organization_id = ?'
-    )
-      .bind(orgId)
-      .first();
-    return json({ settings });
-  }
-
-  // PUT /api/iuran/settings  (= form "Penyesuaian Iuran Pokok" di tab Penyesuaian)
-  if (path === '/api/iuran/settings' && request.method === 'PUT') {
-    const body = await request.json().catch(() => ({}));
-    const { nominal_bulanan, tanggal_mulai_organisasi } = body;
-    if (nominal_bulanan === undefined || nominal_bulanan < 0) {
-      return errorResponse('Nominal iuran wajib diisi dan tidak boleh negatif');
-    }
-    if (!tanggal_mulai_organisasi) return errorResponse('Tanggal mulai organisasi wajib diisi');
-
-    await env.DB.prepare(
-      `UPDATE iuran_settings SET nominal_bulanan = ?, tanggal_mulai_organisasi = ?,
-       updated_at = datetime("now"), updated_by = ? WHERE organization_id = ?`
-    )
-      .bind(nominal_bulanan, tanggal_mulai_organisasi, user.id, orgId)
-      .run();
-    return json({ message: 'Pengaturan iuran berhasil diperbarui' });
-  }
-
-  // POST /api/iuran/bayar  (= form "Iuran Anggota" di tab Catat)
-  if (path === '/api/iuran/bayar' && request.method === 'POST') {
-    const body = await request.json().catch(() => ({}));
-    const { anggota_id, jumlah, akun_id, tanggal_pembayaran, metode_pembayaran, catatan } = body;
-    if (!anggota_id || !jumlah || jumlah <= 0 || !akun_id || !tanggal_pembayaran) {
-      return errorResponse('Data pembayaran iuran tidak lengkap');
-    }
-
-    const anggota = await env.DB.prepare(
-      'SELECT * FROM anggota WHERE id = ? AND organization_id = ? AND dikeluarkan_at IS NULL'
-    )
-      .bind(anggota_id, orgId)
-      .first();
-    if (!anggota) return errorResponse('Anggota tidak ditemukan', 404);
-
-    const akun = await env.DB.prepare('SELECT * FROM akun WHERE id = ? AND organization_id = ?')
-      .bind(akun_id, orgId)
-      .first();
-    if (!akun) return errorResponse('Akun tidak ditemukan', 404);
-
-    const settings = await env.DB.prepare(
-      'SELECT * FROM iuran_settings WHERE organization_id = ?'
-    )
-      .bind(orgId)
-      .first();
-    if (!settings || !settings.nominal_bulanan || settings.nominal_bulanan <= 0) {
-      return errorResponse('Nominal iuran wajib belum diatur. Atur dulu di menu Penyesuaian.', 400);
-    }
-
-    // --- Alokasi FIFO ke periode tertua yang belum lunas ---
-    const mulaiAnggota = anggota.tanggal_bergabung > settings.tanggal_mulai_organisasi
-      ? anggota.tanggal_bergabung
-      : settings.tanggal_mulai_organisasi;
-    const periodeList = generatePeriodeList(mulaiAnggota, tanggal_pembayaran.slice(0, 10));
-
-    const alokasiRows = await env.DB.prepare(
-      `SELECT periode, SUM(jumlah_dialokasikan) as total FROM iuran_alokasi
-       WHERE anggota_id = ? GROUP BY periode`
-    )
-      .bind(anggota_id)
-      .all();
-    const alokasiMap = {};
-    for (const row of alokasiRows.results || []) alokasiMap[row.periode] = row.total;
-
-    let sisaDana = jumlah;
-    const alokasiBaru = [];
-    for (const periode of periodeList) {
-      if (sisaDana <= 0) break;
-      const sudahDibayar = alokasiMap[periode] || 0;
-      const kekurangan = settings.nominal_bulanan - sudahDibayar;
-      if (kekurangan <= 0) continue;
-      const dialokasikan = Math.min(sisaDana, kekurangan);
-      alokasiBaru.push({
-        periode,
-        jumlah: dialokasikan,
-        status: dialokasikan >= kekurangan ? 'lunas' : 'sebagian',
-      });
-      sisaDana -= dialokasikan;
-    }
-    // Kalau masih ada sisa dana setelah semua periode wajib lunas -> alokasikan ke periode berikutnya (bayar di muka)
-    let periodeLanjut = periodeList.length > 0 ? periodeList[periodeList.length - 1] : mulaiAnggota.slice(0, 7);
-    while (sisaDana > 0) {
-      periodeLanjut = tambahSatuBulan(periodeLanjut);
-      const dialokasikan = Math.min(sisaDana, settings.nominal_bulanan);
-      alokasiBaru.push({
-        periode: periodeLanjut,
-        jumlah: dialokasikan,
-        status: dialokasikan >= settings.nominal_bulanan ? 'lunas' : 'sebagian',
-      });
-      sisaDana -= dialokasikan;
-    }
-
-    // --- Simpan: transaksi kas + iuran_pembayaran + iuran_alokasi (1 pembayaran = 1 pencatatan kas) ---
-    const transaksiId = newId();
-    const noReferensi = await generateNoReferensi(env.DB, tanggal_pembayaran.slice(0, 10));
-    const pembayaranId = newId();
-
-    const periodeTerbayarStr = alokasiBaru.map((a) => a.periode).join(', ');
-
-    const statements = [
-      env.DB.prepare(
-        `INSERT INTO transaksi (id, organization_id, tipe, sumber, jumlah, akun_id,
-         metode_pembayaran, keterangan, catatan, no_referensi, tanggal, dicatat_oleh)
-         VALUES (?, ?, 'masuk', 'iuran', ?, ?, ?, ?, ?, ?, ?, ?)`
-      ).bind(
-        transaksiId,
-        orgId,
-        jumlah,
-        akun_id,
-        metode_pembayaran || 'Tunai',
-        `Iuran ${anggota.nama} (${periodeTerbayarStr})`,
-        catatan || null,
-        noReferensi,
-        tanggal_pembayaran,
-        user.id
-      ),
-      env.DB.prepare(
-        `INSERT INTO iuran_pembayaran (id, organization_id, anggota_id, akun_id, jumlah,
-         metode_pembayaran, tanggal_pembayaran, catatan, dicatat_oleh, transaksi_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      ).bind(
-        pembayaranId,
-        orgId,
-        anggota_id,
-        akun_id,
-        jumlah,
-        metode_pembayaran || 'Tunai',
-        tanggal_pembayaran,
-        catatan || null,
-        user.id,
-        transaksiId
-      ),
-    ];
-    for (const a of alokasiBaru) {
-      statements.push(
-        env.DB.prepare(
-          `INSERT INTO iuran_alokasi (id, pembayaran_id, anggota_id, periode, jumlah_dialokasikan, status)
-           VALUES (?, ?, ?, ?, ?, ?)`
-        ).bind(newId(), pembayaranId, anggota_id, a.periode, a.jumlah, a.status)
-      );
-    }
-    await env.DB.batch(statements);
-
-    return json(
-      {
-        message: 'Pembayaran iuran berhasil dicatat',
-        transaksi_id: transaksiId,
-        no_referensi: noReferensi,
-        alokasi: alokasiBaru,
-      },
-      201
-    );
-  }
-
-  return errorResponse('Endpoint iuran tidak ditemukan', 404);
-}
-
-function tambahSatuBulan(periodeYYYYMM) {
-  const [y, m] = periodeYYYYMM.split('-').map(Number);
-  const d = new Date(Date.UTC(y, m - 1 + 1, 1));
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
-}
-
-// ============================================================
-// TRANSAKSI ROUTES
-// ============================================================
-async function handleTransaksi(request, env, path, orgId, user) {
-  // GET /api/transaksi  -> riwayat + filter tipe + pagination
-  if (path === '/api/transaksi' && request.method === 'GET') {
-    const url = new URL(request.url);
-    const tipe = url.searchParams.get('tipe'); // masuk|keluar|transfer|penyesuaian
-    const page = parseInt(url.searchParams.get('page') || '1', 10);
-    const perPage = parseInt(url.searchParams.get('per_page') || '20', 10);
-
-    let query = `SELECT t.*, k.nama as kategori_nama, a.nama as akun_nama,
-      aa.nama as akun_asal_nama, at.nama as akun_tujuan_nama, u.nama as dicatat_oleh_nama
-      FROM transaksi t
-      LEFT JOIN kategori k ON k.id = t.kategori_id
-      LEFT JOIN akun a ON a.id = t.akun_id
-      LEFT JOIN akun aa ON aa.id = t.akun_asal_id
-      LEFT JOIN akun at ON at.id = t.akun_tujuan_id
-      LEFT JOIN users u ON u.id = t.dicatat_oleh
-      WHERE t.organization_id = ?`;
-    const params = [orgId];
-    if (tipe && tipe !== 'semua') {
-      query += ' AND t.tipe = ?';
-      params.push(tipe);
-    }
-    query += ' ORDER BY t.tanggal DESC, t.created_at DESC LIMIT ? OFFSET ?';
-    params.push(perPage, (page - 1) * perPage);
-
-    const rows = await env.DB.prepare(query).bind(...params).all();
-    return json({ transaksi: rows.results || [] });
-  }
-
-  // GET /api/transaksi/:id  -> detail 1 transaksi (buat struk)
-  const detailMatch = path.match(/^\/api\/transaksi\/([^/]+)$/);
-  if (detailMatch && request.method === 'GET') {
-    const id = detailMatch[1];
-    const row = await env.DB.prepare(
-      `SELECT t.*, k.nama as kategori_nama, a.nama as akun_nama,
-        aa.nama as akun_asal_nama, at.nama as akun_tujuan_nama, u.nama as dicatat_oleh_nama
-       FROM transaksi t
-       LEFT JOIN kategori k ON k.id = t.kategori_id
-       LEFT JOIN akun a ON a.id = t.akun_id
-       LEFT JOIN akun aa ON aa.id = t.akun_asal_id
-       LEFT JOIN akun at ON at.id = t.akun_tujuan_id
-       LEFT JOIN users u ON u.id = t.dicatat_oleh
-       WHERE t.id = ? AND t.organization_id = ?`
-    )
-      .bind(id, orgId)
-      .first();
-    if (!row) return errorResponse('Transaksi tidak ditemukan', 404);
-
-    // Kalau transaksi ini asalnya dari pembayaran iuran, sertakan info anggota
-    let iuranInfo = null;
-    if (row.sumber === 'iuran') {
-      iuranInfo = await env.DB.prepare(
-        `SELECT p.*, an.nama as anggota_nama, an.no_hp as anggota_no_hp
-         FROM iuran_pembayaran p JOIN anggota an ON an.id = p.anggota_id
-         WHERE p.transaksi_id = ?`
-      )
-        .bind(id)
-        .first();
-    }
-
-    return json({ transaksi: row, iuran_info: iuranInfo });
-  }
-
-  // POST /api/transaksi/pemasukan-lain
-  if (path === '/api/transaksi/pemasukan-lain' && request.method === 'POST') {
-    return simpanTransaksiSederhana(env, orgId, user, 'masuk', await request.json().catch(() => ({})));
-  }
-
-  // POST /api/transaksi/pengeluaran
-  if (path === '/api/transaksi/pengeluaran' && request.method === 'POST') {
-    return simpanTransaksiSederhana(env, orgId, user, 'keluar', await request.json().catch(() => ({})));
-  }
-
-  // POST /api/transaksi/transfer
-  if (path === '/api/transaksi/transfer' && request.method === 'POST') {
-    const body = await request.json().catch(() => ({}));
-    const { akun_asal_id, akun_tujuan_id, jumlah, tanggal, catatan } = body;
-    if (!akun_asal_id || !akun_tujuan_id || !jumlah || jumlah <= 0 || !tanggal) {
-      return errorResponse('Data transfer tidak lengkap');
-    }
-    if (akun_asal_id === akun_tujuan_id) return errorResponse('Akun asal dan tujuan tidak boleh sama');
-
-    const [asal, tujuan] = await Promise.all([
-      env.DB.prepare('SELECT * FROM akun WHERE id = ? AND organization_id = ?').bind(akun_asal_id, orgId).first(),
-      env.DB.prepare('SELECT * FROM akun WHERE id = ? AND organization_id = ?').bind(akun_tujuan_id, orgId).first(),
-    ]);
-    if (!asal || !tujuan) return errorResponse('Akun tidak ditemukan', 404);
-
-    const id = newId();
-    const noReferensi = await generateNoReferensi(env.DB, tanggal.slice(0, 10));
-    await env.DB.prepare(
-      `INSERT INTO transaksi (id, organization_id, tipe, jumlah, akun_asal_id, akun_tujuan_id,
-       keterangan, catatan, no_referensi, tanggal, dicatat_oleh)
-       VALUES (?, ?, 'transfer', ?, ?, ?, ?, ?, ?, ?, ?)`
-    )
-      .bind(
-        id,
-        orgId,
-        jumlah,
-        akun_asal_id,
-        akun_tujuan_id,
-        `Transfer ${asal.nama} -> ${tujuan.nama}`,
-        catatan || null,
-        noReferensi,
-        tanggal,
-        user.id
-      )
-      .run();
-    return json({ id, no_referensi: noReferensi }, 201);
-  }
-
-  // POST /api/transaksi/penyesuaian  (penyesuaian saldo akun, BUKAN pengaturan iuran pokok)
-  if (path === '/api/transaksi/penyesuaian' && request.method === 'POST') {
-    const body = await request.json().catch(() => ({}));
-    const { akun_id, jumlah, tanggal, catatan } = body;
-    if (!akun_id || jumlah === undefined || jumlah === 0 || !tanggal) {
-      return errorResponse('Data penyesuaian tidak lengkap (jumlah tidak boleh 0)');
-    }
-    const akun = await env.DB.prepare('SELECT * FROM akun WHERE id = ? AND organization_id = ?')
-      .bind(akun_id, orgId)
-      .first();
-    if (!akun) return errorResponse('Akun tidak ditemukan', 404);
-
-    const id = newId();
-    const noReferensi = await generateNoReferensi(env.DB, tanggal.slice(0, 10));
-    await env.DB.prepare(
-      `INSERT INTO transaksi (id, organization_id, tipe, jumlah, akun_id,
-       keterangan, catatan, no_referensi, tanggal, dicatat_oleh)
-       VALUES (?, ?, 'penyesuaian', ?, ?, ?, ?, ?, ?, ?)`
-    )
-      .bind(
-        id,
-        orgId,
-        jumlah, // boleh negatif = koreksi mengurangi saldo
-        akun_id,
-        jumlah > 0 ? `Penyesuaian tambah saldo ${akun.nama}` : `Penyesuaian kurangi saldo ${akun.nama}`,
-        catatan || null,
-        noReferensi,
-        tanggal,
-        user.id
-      )
-      .run();
-    return json({ id, no_referensi: noReferensi }, 201);
-  }
-
-  return errorResponse('Endpoint transaksi tidak ditemukan', 404);
-}
-
-async function simpanTransaksiSederhana(env, orgId, user, tipe, body) {
-  const { jumlah, akun_id, kategori_id, keterangan, metode_pembayaran, tanggal, catatan } = body;
-  if (!jumlah || jumlah <= 0 || !akun_id || !tanggal || !keterangan) {
-    return errorResponse('Data transaksi tidak lengkap');
-  }
-  const akun = await env.DB.prepare('SELECT * FROM akun WHERE id = ? AND organization_id = ?')
-    .bind(akun_id, orgId)
-    .first();
-  if (!akun) return errorResponse('Akun tidak ditemukan', 404);
-
-  if (kategori_id) {
-    const kategori = await env.DB.prepare('SELECT * FROM kategori WHERE id = ? AND organization_id = ?')
-      .bind(kategori_id, orgId)
-      .first();
-    if (!kategori) return errorResponse('Kategori tidak ditemukan', 404);
-  }
-
-  const id = newId();
-  const noReferensi = await generateNoReferensi(env.DB, tanggal.slice(0, 10));
+function round2(n) { return Math.round((Number(n) + Number.EPSILON) * 100) / 100; }
+
+// ---------- Route handlers ----------
+
+const routes = [];
+function route(method, pattern, handler, auth = true) { routes.push({ method, pattern, handler, auth }); }
+
+// ===================== AUTH =====================
+route('POST', '/api/auth/register', async (req, env) => {
+  const body = await req.json();
+  const email = (body.email || '').trim().toLowerCase();
+  const password = body.password || '';
+  const namaUsaha = (body.nama_usaha || 'Usaha Saya').trim();
+  if (!email || password.length < 6) return err('Email wajib diisi & password minimal 6 karakter');
+  const exists = await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(email).first();
+  if (exists) return err('Email sudah terdaftar');
+  const { hash, salt } = await pbkdf2Hash(password);
+  const res = await env.DB.prepare('INSERT INTO users (email, password_hash, password_salt, nama_usaha) VALUES (?, ?, ?, ?)')
+    .bind(email, hash, salt, namaUsaha).run();
+  const uid = res.meta.last_row_id;
+  const token = await createToken({ uid, email, exp: Date.now() + 1000 * 60 * 60 * 24 * 30 }, env.JWT_SECRET);
+  return json({ token, user: { id: uid, email, nama_usaha: namaUsaha } });
+}, false);
+
+route('POST', '/api/auth/login', async (req, env) => {
+  const body = await req.json();
+  const email = (body.email || '').trim().toLowerCase();
+  const password = body.password || '';
+  const user = await env.DB.prepare('SELECT * FROM users WHERE email = ?').bind(email).first();
+  if (!user) return err('Email atau password salah', 401);
+  const { hash } = await pbkdf2Hash(password, user.password_salt);
+  if (hash !== user.password_hash) return err('Email atau password salah', 401);
+  const token = await createToken({ uid: user.id, email, exp: Date.now() + 1000 * 60 * 60 * 24 * 30 }, env.JWT_SECRET);
+  return json({ token, user: { id: user.id, email: user.email, nama_usaha: user.nama_usaha } });
+}, false);
+
+// ===================== 1. MASTER BAHAN BAKU =====================
+route('GET', '/api/bahan', async (req, env, u) => {
+  const { results } = await env.DB.prepare('SELECT * FROM bahan_baku WHERE user_id = ? ORDER BY kategori, nama').bind(u.uid).all();
+  return json(results);
+});
+
+route('POST', '/api/bahan', async (req, env, u) => {
+  const b = await req.json();
+  if (!b.nama || !b.satuan || b.harga_beli == null) return err('Nama, satuan, dan harga wajib diisi');
+  const isiKemasan = Number(b.isi_kemasan) || 1;
+  const hargaPerSatuan = round2(Number(b.harga_beli) / isiKemasan);
+  const kategori = ['adonan', 'topping', 'kemasan'].includes(b.kategori) ? b.kategori : 'adonan';
+  const res = await env.DB.prepare(
+    'INSERT INTO bahan_baku (user_id, nama, kategori, satuan, harga_beli, isi_kemasan, harga_per_satuan, stok, stok_minimum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).bind(u.uid, b.nama.trim(), kategori, b.satuan.trim(), b.harga_beli, isiKemasan, hargaPerSatuan, b.stok || 0, b.stok_minimum || 0).run();
+  return json({ id: res.meta.last_row_id, harga_per_satuan: hargaPerSatuan });
+});
+
+route('PUT', '/api/bahan/:id', async (req, env, u, params) => {
+  const b = await req.json();
+  const existing = await env.DB.prepare('SELECT id FROM bahan_baku WHERE id = ? AND user_id = ?').bind(params.id, u.uid).first();
+  if (!existing) return err('Bahan tidak ditemukan', 404);
+  const isiKemasan = Number(b.isi_kemasan) || 1;
+  const hargaPerSatuan = round2(Number(b.harga_beli) / isiKemasan);
+  const kategori = ['adonan', 'topping', 'kemasan'].includes(b.kategori) ? b.kategori : 'adonan';
   await env.DB.prepare(
-    `INSERT INTO transaksi (id, organization_id, tipe, jumlah, akun_id, kategori_id,
-     metode_pembayaran, keterangan, catatan, no_referensi, tanggal, dicatat_oleh)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  )
-    .bind(
-      id,
-      orgId,
-      tipe,
-      jumlah,
-      akun_id,
-      kategori_id || null,
-      metode_pembayaran || 'Tunai',
-      keterangan.trim(),
-      catatan || null,
-      noReferensi,
-      tanggal,
-      user.id
-    )
-    .run();
-  return json({ id, no_referensi: noReferensi }, 201);
+    `UPDATE bahan_baku SET nama=?, kategori=?, satuan=?, harga_beli=?, isi_kemasan=?, harga_per_satuan=?, stok=?, stok_minimum=?, updated_at=datetime('now') WHERE id=?`
+  ).bind(b.nama, kategori, b.satuan, b.harga_beli, isiKemasan, hargaPerSatuan, b.stok || 0, b.stok_minimum || 0, params.id).run();
+  return json({ ok: true, harga_per_satuan: hargaPerSatuan });
+});
+
+route('DELETE', '/api/bahan/:id', async (req, env, u, params) => {
+  const dipakaiResep = await env.DB.prepare('SELECT id FROM resep_bahan WHERE bahan_id = ? LIMIT 1').bind(params.id).first();
+  if (dipakaiResep) return err('Bahan masih dipakai di Master Resep, hapus dari sana dulu', 409);
+  const dipakaiTopping = await env.DB.prepare('SELECT id FROM varian_topping WHERE bahan_id = ? LIMIT 1').bind(params.id).first();
+  if (dipakaiTopping) return err('Bahan masih dipakai sebagai topping di Varian, hapus dari sana dulu', 409);
+  await env.DB.prepare('DELETE FROM bahan_baku WHERE id = ? AND user_id = ?').bind(params.id, u.uid).run();
+  return json({ ok: true });
+});
+
+// ===================== 2. MASTER RESEP =====================
+async function ambilResepLengkap(env, resepId) {
+  const r = await env.DB.prepare('SELECT * FROM resep WHERE id = ?').bind(resepId).first();
+  if (!r) return null;
+  const { results: bahan } = await env.DB.prepare(
+    `SELECT rb.id, rb.bahan_id, rb.qty, rb.harga_satuan_saat_itu, rb.biaya,
+            b.nama AS nama_bahan, b.satuan, b.harga_per_satuan AS harga_sekarang
+     FROM resep_bahan rb JOIN bahan_baku b ON b.id = rb.bahan_id WHERE rb.resep_id = ?`
+  ).bind(resepId).all();
+  r.bahan = bahan;
+  r.harga_berubah = bahan.some(x => round2(x.harga_satuan_saat_itu) !== round2(x.harga_sekarang));
+  return r;
 }
 
-// ============================================================
-// DASHBOARD (BERANDA) ROUTES
-// ============================================================
-async function handleDashboard(request, env, path, orgId, user) {
-  if (path === '/api/dashboard/summary' && request.method === 'GET') {
-    const akunList = await env.DB.prepare('SELECT * FROM akun WHERE organization_id = ?')
-      .bind(orgId)
-      .all();
-    let totalSaldo = 0;
-    for (const akun of akunList.results || []) {
-      totalSaldo += await hitungSaldoAkun(env.DB, akun);
-    }
-
-    const bulanIni = new Date().toISOString().slice(0, 7);
-    const awalBulan = `${bulanIni}-01`;
-    const hariIni = new Date().toISOString().slice(0, 10);
-
-    const pemasukanBulanIni = await env.DB.prepare(
-      `SELECT COALESCE(SUM(jumlah),0) as total FROM transaksi
-       WHERE organization_id = ? AND tipe = 'masuk' AND tanggal >= ?`
-    )
-      .bind(orgId, awalBulan)
-      .first();
-    const pengeluaranBulanIni = await env.DB.prepare(
-      `SELECT COALESCE(SUM(jumlah),0) as total FROM transaksi
-       WHERE organization_id = ? AND tipe = 'keluar' AND tanggal >= ?`
-    )
-      .bind(orgId, awalBulan)
-      .first();
-
-    // Saldo awal bulan = total saldo saat ini dikurangi pergerakan bersih bulan ini
-    const saldoAwalBulan = totalSaldo - (pemasukanBulanIni.total || 0) + (pengeluaranBulanIni.total || 0);
-
-    const transaksiTerbaru = await env.DB.prepare(
-      `SELECT t.*, k.nama as kategori_nama FROM transaksi t
-       LEFT JOIN kategori k ON k.id = t.kategori_id
-       WHERE t.organization_id = ? ORDER BY t.tanggal DESC, t.created_at DESC LIMIT 5`
-    )
-      .bind(orgId)
-      .all();
-
-    const adaTransaksiHariIni = await env.DB.prepare(
-      `SELECT id FROM transaksi WHERE organization_id = ? AND tanggal = ? LIMIT 1`
-    )
-      .bind(orgId, hariIni)
-      .first();
-
-    return json({
-      total_saldo: totalSaldo,
-      total_pemasukan: pemasukanBulanIni.total || 0,
-      total_pengeluaran: pengeluaranBulanIni.total || 0,
-      ringkasan_bulan_ini: {
-        bulan: bulanIni,
-        pemasukan: pemasukanBulanIni.total || 0,
-        pengeluaran: pengeluaranBulanIni.total || 0,
-        saldo_awal: saldoAwalBulan,
-        saldo_akhir: totalSaldo,
-      },
-      transaksi_terbaru: transaksiTerbaru.results || [],
-      ada_catatan_hari_ini: !!adaTransaksiHariIni,
-    });
+route('GET', '/api/resep', async (req, env, u) => {
+  const { results } = await env.DB.prepare('SELECT * FROM resep WHERE user_id = ? ORDER BY nama').bind(u.uid).all();
+  for (const r of results) {
+    const { results: bahan } = await env.DB.prepare(
+      `SELECT rb.harga_satuan_saat_itu, b.harga_per_satuan AS harga_sekarang
+       FROM resep_bahan rb JOIN bahan_baku b ON b.id = rb.bahan_id WHERE rb.resep_id = ?`
+    ).bind(r.id).all();
+    r.harga_berubah = bahan.some(x => round2(x.harga_satuan_saat_itu) !== round2(x.harga_sekarang));
   }
+  return json(results);
+});
 
-  return errorResponse('Endpoint dashboard tidak ditemukan', 404);
+route('GET', '/api/resep/:id', async (req, env, u, params) => {
+  const r = await ambilResepLengkap(env, params.id);
+  if (!r || r.user_id !== u.uid) return err('Resep tidak ditemukan', 404);
+  return json(r);
+});
+
+function hitungSnapshotBahan(bahanRows, daftarBahanInput) {
+  // daftarBahanInput: [{bahan_id, qty}], bahanRows: Map bahan_id -> {harga_per_satuan}
+  let total = 0;
+  const hasil = [];
+  for (const item of daftarBahanInput) {
+    const info = bahanRows.get(Number(item.bahan_id));
+    if (!info) continue;
+    const qty = Number(item.qty) || 0;
+    const biaya = round2(qty * info.harga_per_satuan);
+    total += biaya;
+    hasil.push({ bahan_id: Number(item.bahan_id), qty, harga_satuan_saat_itu: info.harga_per_satuan, biaya });
+  }
+  return { total: round2(total), rincian: hasil };
 }
 
-// ============================================================
-// LAPORAN ROUTES
-// ============================================================
-async function handleLaporan(request, env, path, orgId, user) {
-  const url = new URL(request.url);
+route('POST', '/api/resep', async (req, env, u) => {
+  const b = await req.json();
+  if (!b.nama || !Array.isArray(b.bahan) || b.bahan.length === 0) return err('Nama resep dan minimal 1 bahan wajib diisi');
+  const totalBerat = Number(b.total_berat) || 0;
+  if (totalBerat <= 0) return err('Total berat adonan wajib diisi (hasil timbangan)');
 
-  // GET /api/laporan/ringkasan?dari=YYYY-MM-DD&sampai=YYYY-MM-DD&granularitas=mingguan|bulanan|tahunan
-  if (path === '/api/laporan/ringkasan' && request.method === 'GET') {
-    const dari = url.searchParams.get('dari');
-    const sampai = url.searchParams.get('sampai');
-    const granularitas = url.searchParams.get('granularitas') || 'mingguan';
-    if (!dari || !sampai) return errorResponse('Parameter dari dan sampai wajib diisi');
+  const { results: semuaBahan } = await env.DB.prepare('SELECT id, harga_per_satuan FROM bahan_baku WHERE user_id = ?').bind(u.uid).all();
+  const peta = new Map(semuaBahan.map(x => [x.id, x]));
+  const { total, rincian } = hitungSnapshotBahan(peta, b.bahan);
+  if (rincian.length === 0) return err('Bahan tidak valid');
+  const hppPerGram = round2(total / totalBerat);
 
-    const totalMasuk = await env.DB.prepare(
-      `SELECT COALESCE(SUM(jumlah),0) as total, COUNT(*) as jumlah_transaksi FROM transaksi
-       WHERE organization_id = ? AND tipe = 'masuk' AND tanggal BETWEEN ? AND ?`
-    )
-      .bind(orgId, dari, sampai)
-      .first();
-    const totalKeluar = await env.DB.prepare(
-      `SELECT COALESCE(SUM(jumlah),0) as total, COUNT(*) as jumlah_transaksi FROM transaksi
-       WHERE organization_id = ? AND tipe = 'keluar' AND tanggal BETWEEN ? AND ?`
-    )
-      .bind(orgId, dari, sampai)
-      .first();
-
-    // Periode pembanding: rentang waktu yang sama persis, mundur ke belakang
-    const rentangHari = Math.round((new Date(sampai) - new Date(dari)) / 86400000) + 1;
-    const dariPembanding = new Date(new Date(dari).getTime() - rentangHari * 86400000)
-      .toISOString()
-      .slice(0, 10);
-    const sampaiPembanding = new Date(new Date(dari).getTime() - 86400000).toISOString().slice(0, 10);
-
-    const masukPembanding = await env.DB.prepare(
-      `SELECT COALESCE(SUM(jumlah),0) as total FROM transaksi
-       WHERE organization_id = ? AND tipe = 'masuk' AND tanggal BETWEEN ? AND ?`
-    )
-      .bind(orgId, dariPembanding, sampaiPembanding)
-      .first();
-    const keluarPembanding = await env.DB.prepare(
-      `SELECT COALESCE(SUM(jumlah),0) as total FROM transaksi
-       WHERE organization_id = ? AND tipe = 'keluar' AND tanggal BETWEEN ? AND ?`
-    )
-      .bind(orgId, dariPembanding, sampaiPembanding)
-      .first();
-
-    const akunList = await env.DB.prepare('SELECT * FROM akun WHERE organization_id = ?').bind(orgId).all();
-    let saldoAkhir = 0;
-    for (const akun of akunList.results || []) saldoAkhir += await hitungSaldoAkun(env.DB, akun);
-    const saldoPembanding = saldoAkhir - (totalMasuk.total || 0) + (totalKeluar.total || 0);
-
-    function hitungPersenGrowth(sekarang, dulu) {
-      if (!dulu || dulu === 0) return sekarang > 0 ? 100 : 0;
-      return Math.round(((sekarang - dulu) / dulu) * 100);
-    }
-
-    // Grafik arus kas per bucket waktu (sederhana: kelompokkan per tanggal, agregasi kasar di frontend)
-    const grafikRows = await env.DB.prepare(
-      `SELECT tanggal, tipe, SUM(jumlah) as total FROM transaksi
-       WHERE organization_id = ? AND tipe IN ('masuk','keluar') AND tanggal BETWEEN ? AND ?
-       GROUP BY tanggal, tipe ORDER BY tanggal`
-    )
-      .bind(orgId, dari, sampai)
-      .all();
-
-    // Rincian per kategori pengeluaran
-    const kategoriRows = await env.DB.prepare(
-      `SELECT k.nama, SUM(t.jumlah) as total FROM transaksi t
-       JOIN kategori k ON k.id = t.kategori_id
-       WHERE t.organization_id = ? AND t.tipe = 'keluar' AND t.tanggal BETWEEN ? AND ?
-       GROUP BY k.nama ORDER BY total DESC`
-    )
-      .bind(orgId, dari, sampai)
-      .all();
-
-    return json({
-      periode: { dari, sampai, granularitas },
-      total_pemasukan: totalMasuk.total || 0,
-      total_pengeluaran: totalKeluar.total || 0,
-      saldo_akhir: saldoAkhir,
-      growth: {
-        pemasukan: hitungPersenGrowth(totalMasuk.total || 0, masukPembanding.total || 0),
-        pengeluaran: hitungPersenGrowth(totalKeluar.total || 0, keluarPembanding.total || 0),
-        saldo: hitungPersenGrowth(saldoAkhir, saldoPembanding),
-      },
-      grafik_arus_kas: grafikRows.results || [],
-      rincian_kategori_pengeluaran: kategoriRows.results || [],
-    });
+  const res = await env.DB.prepare(
+    'INSERT INTO resep (user_id, nama, catatan, total_berat, total_biaya, hpp_per_gram) VALUES (?, ?, ?, ?, ?, ?)'
+  ).bind(u.uid, b.nama.trim(), b.catatan || null, totalBerat, total, hppPerGram).run();
+  const resepId = res.meta.last_row_id;
+  for (const item of rincian) {
+    await env.DB.prepare('INSERT INTO resep_bahan (resep_id, bahan_id, qty, harga_satuan_saat_itu, biaya) VALUES (?, ?, ?, ?, ?)')
+      .bind(resepId, item.bahan_id, item.qty, item.harga_satuan_saat_itu, item.biaya).run();
   }
+  return json({ id: resepId, total_biaya: total, hpp_per_gram: hppPerGram });
+});
 
-  // GET /api/laporan/anggota  -> ringkasan status iuran semua anggota untuk laporan
-  if (path === '/api/laporan/anggota' && request.method === 'GET') {
-    const settings = await env.DB.prepare('SELECT * FROM iuran_settings WHERE organization_id = ?')
-      .bind(orgId)
-      .first();
-    const anggotaList = await env.DB.prepare(
-      'SELECT * FROM anggota WHERE organization_id = ? AND dikeluarkan_at IS NULL ORDER BY nama'
-    )
-      .bind(orgId)
-      .all();
+route('PUT', '/api/resep/:id', async (req, env, u, params) => {
+  const b = await req.json();
+  const existing = await env.DB.prepare('SELECT id FROM resep WHERE id = ? AND user_id = ?').bind(params.id, u.uid).first();
+  if (!existing) return err('Resep tidak ditemukan', 404);
+  const totalBerat = Number(b.total_berat) || 0;
+  if (totalBerat <= 0) return err('Total berat adonan wajib diisi');
 
-    let sudahBayar = 0;
-    let belumBayar = 0;
-    let totalSudahBayar = 0;
-    let totalBelumBayar = 0;
-    const detail = [];
-    for (const a of anggotaList.results || []) {
-      const status = await hitungStatusIuran(env.DB, a, settings, orgId);
-      if (status.status_bulan_ini === 'lunas') {
-        sudahBayar++;
-        totalSudahBayar += settings ? settings.nominal_bulanan : 0;
-      } else {
-        belumBayar++;
-        totalBelumBayar += status.tunggakan_rupiah;
-      }
-      detail.push({ ...a, status_iuran: status });
-    }
+  const { results: semuaBahan } = await env.DB.prepare('SELECT id, harga_per_satuan FROM bahan_baku WHERE user_id = ?').bind(u.uid).all();
+  const peta = new Map(semuaBahan.map(x => [x.id, x]));
+  const { total, rincian } = hitungSnapshotBahan(peta, b.bahan || []);
+  const hppPerGram = round2(total / totalBerat);
 
-    return json({
-      ringkasan: { sudah_bayar: sudahBayar, belum_bayar: belumBayar, totalSudahBayar, totalBelumBayar },
-      detail,
-    });
+  await env.DB.prepare(`UPDATE resep SET nama=?, catatan=?, total_berat=?, total_biaya=?, hpp_per_gram=?, updated_at=datetime('now') WHERE id=?`)
+    .bind(b.nama, b.catatan || null, totalBerat, total, hppPerGram, params.id).run();
+  await env.DB.prepare('DELETE FROM resep_bahan WHERE resep_id = ?').bind(params.id).run();
+  for (const item of rincian) {
+    await env.DB.prepare('INSERT INTO resep_bahan (resep_id, bahan_id, qty, harga_satuan_saat_itu, biaya) VALUES (?, ?, ?, ?, ?)')
+      .bind(params.id, item.bahan_id, item.qty, item.harga_satuan_saat_itu, item.biaya).run();
   }
+  return json({ total_biaya: total, hpp_per_gram: hppPerGram });
+});
 
-  // GET /api/laporan/akun -> saldo per akun untuk laporan
-  if (path === '/api/laporan/akun' && request.method === 'GET') {
-    const akunList = await env.DB.prepare('SELECT * FROM akun WHERE organization_id = ?').bind(orgId).all();
-    const hasil = [];
-    for (const akun of akunList.results || []) {
-      hasil.push({ ...akun, saldo: await hitungSaldoAkun(env.DB, akun) });
-    }
-    return json({ akun: hasil });
+// Hitung ulang: pakai harga bahan TERKINI, qty tidak berubah
+route('POST', '/api/resep/:id/hitung-ulang', async (req, env, u, params) => {
+  const r = await env.DB.prepare('SELECT * FROM resep WHERE id = ? AND user_id = ?').bind(params.id, u.uid).first();
+  if (!r) return err('Resep tidak ditemukan', 404);
+  const { results: baris } = await env.DB.prepare(
+    `SELECT rb.id, rb.bahan_id, rb.qty, b.harga_per_satuan FROM resep_bahan rb JOIN bahan_baku b ON b.id = rb.bahan_id WHERE rb.resep_id = ?`
+  ).bind(params.id).all();
+  let total = 0;
+  for (const row of baris) {
+    const biaya = round2(row.qty * row.harga_per_satuan);
+    total += biaya;
+    await env.DB.prepare('UPDATE resep_bahan SET harga_satuan_saat_itu=?, biaya=? WHERE id=?').bind(row.harga_per_satuan, biaya, row.id).run();
   }
+  total = round2(total);
+  const hppPerGram = round2(total / (r.total_berat || 1));
+  await env.DB.prepare(`UPDATE resep SET total_biaya=?, hpp_per_gram=?, updated_at=datetime('now') WHERE id=?`).bind(total, hppPerGram, params.id).run();
+  return json({ total_biaya: total, hpp_per_gram: hppPerGram });
+});
 
-  // GET /api/laporan/transaksi -> semua transaksi dalam rentang, untuk isi laporan lengkap
-  if (path === '/api/laporan/transaksi' && request.method === 'GET') {
-    const dari = url.searchParams.get('dari');
-    const sampai = url.searchParams.get('sampai');
-    if (!dari || !sampai) return errorResponse('Parameter dari dan sampai wajib diisi');
-    const rows = await env.DB.prepare(
-      `SELECT t.*, k.nama as kategori_nama, a.nama as akun_nama
-       FROM transaksi t
-       LEFT JOIN kategori k ON k.id = t.kategori_id
-       LEFT JOIN akun a ON a.id = t.akun_id
-       WHERE t.organization_id = ? AND t.tanggal BETWEEN ? AND ?
-       ORDER BY t.tanggal, t.created_at`
-    )
-      .bind(orgId, dari, sampai)
-      .all();
-    return json({ transaksi: rows.results || [] });
-  }
+route('DELETE', '/api/resep/:id', async (req, env, u, params) => {
+  const dipakai = await env.DB.prepare('SELECT id FROM varian WHERE resep_id = ? LIMIT 1').bind(params.id).first();
+  if (dipakai) return err('Resep masih dipakai Varian Menu, hapus varian dulu', 409);
+  await env.DB.prepare('DELETE FROM resep_bahan WHERE resep_id = ?').bind(params.id).run();
+  await env.DB.prepare('DELETE FROM resep WHERE id = ? AND user_id = ?').bind(params.id, u.uid).run();
+  return json({ ok: true });
+});
 
-  return errorResponse('Endpoint laporan tidak ditemukan', 404);
+// ===================== 3. VARIAN MENU =====================
+async function ambilVarianLengkap(env, varianId) {
+  const v = await env.DB.prepare('SELECT * FROM varian WHERE id = ?').bind(varianId).first();
+  if (!v) return null;
+  const { results: topping } = await env.DB.prepare(
+    `SELECT vt.id, vt.bahan_id, vt.qty, vt.harga_satuan_saat_itu, vt.biaya,
+            b.nama AS nama_bahan, b.satuan, b.harga_per_satuan AS harga_sekarang, b.kategori
+     FROM varian_topping vt JOIN bahan_baku b ON b.id = vt.bahan_id WHERE vt.varian_id = ?`
+  ).bind(varianId).all();
+  v.topping = topping;
+  const resep = await env.DB.prepare('SELECT hpp_per_gram FROM resep WHERE id = ?').bind(v.resep_id).first();
+  v.harga_berubah = (resep && round2(resep.hpp_per_gram) !== round2(v.hpp_per_gram_saat_itu)) ||
+    topping.some(x => round2(x.harga_satuan_saat_itu) !== round2(x.harga_sekarang));
+  return v;
 }
 
-// ============================================================
-// NOTIFIKASI ROUTES (in-app)
-// ============================================================
-async function handleNotifikasi(request, env, path, orgId, user) {
-  if (path === '/api/notifikasi' && request.method === 'GET') {
-    const rows = await env.DB.prepare(
-      'SELECT * FROM notifikasi WHERE organization_id = ? ORDER BY created_at DESC LIMIT 30'
-    )
-      .bind(orgId)
-      .all();
-    const belumDibaca = await env.DB.prepare(
-      'SELECT COUNT(*) as total FROM notifikasi WHERE organization_id = ? AND dibaca = 0'
-    )
-      .bind(orgId)
-      .first();
-    return json({ notifikasi: rows.results || [], belum_dibaca: belumDibaca.total || 0 });
+route('GET', '/api/varian', async (req, env, u) => {
+  const { results } = await env.DB.prepare(
+    `SELECT v.*, r.nama AS nama_resep FROM varian v JOIN resep r ON r.id = v.resep_id
+     WHERE v.user_id = ? AND v.aktif = 1 ORDER BY v.urutan, v.nama`
+  ).bind(u.uid).all();
+  for (const v of results) {
+    v.margin = v.harga_jual > 0 ? round2(((v.harga_jual - v.hpp_final) / v.harga_jual) * 100) : 0;
   }
+  return json(results);
+});
 
-  if (path === '/api/notifikasi/baca-semua' && request.method === 'POST') {
-    await env.DB.prepare('UPDATE notifikasi SET dibaca = 1 WHERE organization_id = ?').bind(orgId).run();
-    return json({ message: 'Semua notifikasi ditandai sudah dibaca' });
+route('GET', '/api/varian/:id', async (req, env, u, params) => {
+  const v = await ambilVarianLengkap(env, params.id);
+  if (!v || v.user_id !== u.uid) return err('Varian tidak ditemukan', 404);
+  return json(v);
+});
+
+function hitungSnapshotTopping(bahanRows, daftarTopping) {
+  let total = 0;
+  const hasil = [];
+  for (const item of (daftarTopping || [])) {
+    const info = bahanRows.get(Number(item.bahan_id));
+    if (!info) continue;
+    const qty = Number(item.qty) || 0;
+    const biaya = round2(qty * info.harga_per_satuan);
+    total += biaya;
+    hasil.push({ bahan_id: Number(item.bahan_id), qty, harga_satuan_saat_itu: info.harga_per_satuan, biaya });
   }
-
-  return errorResponse('Endpoint notifikasi tidak ditemukan', 404);
+  return { total: round2(total), rincian: hasil };
 }
 
-// Dipanggil terjadwal (cron trigger) atau setelah transaksi besar untuk generate notifikasi
-async function generateNotifikasiOtomatis(env, orgId) {
-  const settings = await env.DB.prepare('SELECT * FROM iuran_settings WHERE organization_id = ?')
-    .bind(orgId)
-    .first();
-  if (!settings || !settings.nominal_bulanan) return;
+route('POST', '/api/varian', async (req, env, u) => {
+  const b = await req.json();
+  if (!b.nama || !b.resep_id || !b.berat_gram) return err('Nama, resep, dan berat adonan wajib diisi');
+  const resep = await env.DB.prepare('SELECT * FROM resep WHERE id = ? AND user_id = ?').bind(b.resep_id, u.uid).first();
+  if (!resep) return err('Master Resep tidak ditemukan', 404);
 
-  const anggotaList = await env.DB.prepare(
-    'SELECT * FROM anggota WHERE organization_id = ? AND dikeluarkan_at IS NULL'
-  )
-    .bind(orgId)
-    .all();
+  const { results: semuaBahan } = await env.DB.prepare('SELECT id, harga_per_satuan FROM bahan_baku WHERE user_id = ?').bind(u.uid).all();
+  const peta = new Map(semuaBahan.map(x => [x.id, x]));
+  const { total: biayaTopping, rincian } = hitungSnapshotTopping(peta, b.topping);
 
-  for (const a of anggotaList.results || []) {
-    const status = await hitungStatusIuran(env.DB, a, settings, orgId);
-    if (status.status_bulan_ini !== 'lunas' && status.tunggakan_bulan >= 2) {
-      const existing = await env.DB.prepare(
-        `SELECT id FROM notifikasi WHERE organization_id = ? AND tipe = 'menunggak'
-         AND pesan LIKE ? AND created_at > datetime('now', '-7 days')`
-      )
-        .bind(orgId, `%${a.nama}%`)
-        .first();
-      if (!existing) {
-        await env.DB.prepare(
-          `INSERT INTO notifikasi (id, organization_id, tipe, judul, pesan)
-           VALUES (?, ?, 'menunggak', 'Anggota menunggak', ?)`
-        )
-          .bind(newId(), orgId, `${a.nama} menunggak iuran ${status.tunggakan_bulan} bulan`)
-          .run();
-      }
-    }
+  const beratGram = Number(b.berat_gram);
+  const biayaAdonan = round2(beratGram * resep.hpp_per_gram);
+  const hppFinal = round2(biayaAdonan + biayaTopping);
+
+  const res = await env.DB.prepare(
+    `INSERT INTO varian (user_id, resep_id, nama, berat_gram, hpp_per_gram_saat_itu, biaya_adonan, biaya_topping, hpp_final, harga_jual, stok, stok_minimum)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(u.uid, b.resep_id, b.nama.trim(), beratGram, resep.hpp_per_gram, biayaAdonan, biayaTopping, hppFinal, b.harga_jual || 0, b.stok || 0, b.stok_minimum || 0).run();
+  const varianId = res.meta.last_row_id;
+  for (const t of rincian) {
+    await env.DB.prepare('INSERT INTO varian_topping (varian_id, bahan_id, qty, harga_satuan_saat_itu, biaya) VALUES (?, ?, ?, ?, ?)')
+      .bind(varianId, t.bahan_id, t.qty, t.harga_satuan_saat_itu, t.biaya).run();
   }
+  return json({ id: varianId, hpp_final: hppFinal });
+});
+
+route('PUT', '/api/varian/:id', async (req, env, u, params) => {
+  const b = await req.json();
+  const existing = await env.DB.prepare('SELECT * FROM varian WHERE id = ? AND user_id = ?').bind(params.id, u.uid).first();
+  if (!existing) return err('Varian tidak ditemukan', 404);
+  const resepId = b.resep_id || existing.resep_id;
+  const resep = await env.DB.prepare('SELECT * FROM resep WHERE id = ? AND user_id = ?').bind(resepId, u.uid).first();
+  if (!resep) return err('Master Resep tidak ditemukan', 404);
+
+  const { results: semuaBahan } = await env.DB.prepare('SELECT id, harga_per_satuan FROM bahan_baku WHERE user_id = ?').bind(u.uid).all();
+  const peta = new Map(semuaBahan.map(x => [x.id, x]));
+  const { total: biayaTopping, rincian } = hitungSnapshotTopping(peta, b.topping);
+
+  const beratGram = Number(b.berat_gram) || existing.berat_gram;
+  const biayaAdonan = round2(beratGram * resep.hpp_per_gram);
+  const hppFinal = round2(biayaAdonan + biayaTopping);
+
+  await env.DB.prepare(
+    `UPDATE varian SET resep_id=?, nama=?, berat_gram=?, hpp_per_gram_saat_itu=?, biaya_adonan=?, biaya_topping=?, hpp_final=?,
+     harga_jual=?, stok_minimum=?, aktif=?, updated_at=datetime('now') WHERE id=?`
+  ).bind(resepId, b.nama, beratGram, resep.hpp_per_gram, biayaAdonan, biayaTopping, hppFinal, b.harga_jual || 0, b.stok_minimum || 0, b.aktif ?? 1, params.id).run();
+
+  await env.DB.prepare('DELETE FROM varian_topping WHERE varian_id = ?').bind(params.id).run();
+  for (const t of rincian) {
+    await env.DB.prepare('INSERT INTO varian_topping (varian_id, bahan_id, qty, harga_satuan_saat_itu, biaya) VALUES (?, ?, ?, ?, ?)')
+      .bind(params.id, t.bahan_id, t.qty, t.harga_satuan_saat_itu, t.biaya).run();
+  }
+  return json({ hpp_final: hppFinal });
+});
+
+// Hitung ulang varian: ambil hpp_per_gram TERKINI dari resep induk + harga topping terkini
+route('POST', '/api/varian/:id/hitung-ulang', async (req, env, u, params) => {
+  const v = await env.DB.prepare('SELECT * FROM varian WHERE id = ? AND user_id = ?').bind(params.id, u.uid).first();
+  if (!v) return err('Varian tidak ditemukan', 404);
+  const resep = await env.DB.prepare('SELECT hpp_per_gram FROM resep WHERE id = ?').bind(v.resep_id).first();
+  const { results: toppingBaris } = await env.DB.prepare(
+    `SELECT vt.id, vt.bahan_id, vt.qty, b.harga_per_satuan FROM varian_topping vt JOIN bahan_baku b ON b.id = vt.bahan_id WHERE vt.varian_id = ?`
+  ).bind(params.id).all();
+  let biayaTopping = 0;
+  for (const row of toppingBaris) {
+    const biaya = round2(row.qty * row.harga_per_satuan);
+    biayaTopping += biaya;
+    await env.DB.prepare('UPDATE varian_topping SET harga_satuan_saat_itu=?, biaya=? WHERE id=?').bind(row.harga_per_satuan, biaya, row.id).run();
+  }
+  biayaTopping = round2(biayaTopping);
+  const biayaAdonan = round2(v.berat_gram * resep.hpp_per_gram);
+  const hppFinal = round2(biayaAdonan + biayaTopping);
+  await env.DB.prepare(`UPDATE varian SET hpp_per_gram_saat_itu=?, biaya_adonan=?, biaya_topping=?, hpp_final=?, updated_at=datetime('now') WHERE id=?`)
+    .bind(resep.hpp_per_gram, biayaAdonan, biayaTopping, hppFinal, params.id).run();
+  return json({ biaya_adonan: biayaAdonan, biaya_topping: biayaTopping, hpp_final: hppFinal });
+});
+
+route('DELETE', '/api/varian/:id', async (req, env, u, params) => {
+  await env.DB.prepare('UPDATE varian SET aktif = 0 WHERE id = ? AND user_id = ?').bind(params.id, u.uid).run();
+  return json({ ok: true });
+});
+
+route('POST', '/api/varian/:id/restock', async (req, env, u, params) => {
+  const b = await req.json();
+  const qty = Number(b.qty);
+  if (!qty || qty <= 0) return err('Qty restock harus lebih dari 0');
+  const v = await env.DB.prepare('SELECT * FROM varian WHERE id = ? AND user_id = ?').bind(params.id, u.uid).first();
+  if (!v) return err('Varian tidak ditemukan', 404);
+  await env.DB.prepare('UPDATE varian SET stok = stok + ? WHERE id = ?').bind(qty, params.id).run();
+  await env.DB.prepare('INSERT INTO stok_log (varian_id, perubahan, jenis, catatan) VALUES (?, ?, ?, ?)')
+    .bind(params.id, qty, 'restock', b.catatan || null).run();
+  return json({ ok: true });
+});
+
+// ===================== KASIR / TRANSAKSI =====================
+route('POST', '/api/transaksi', async (req, env, u) => {
+  const b = await req.json();
+  if (!Array.isArray(b.items) || b.items.length === 0) return err('Keranjang kosong');
+  let totalJual = 0, totalHpp = 0;
+  const rincian = [];
+  for (const item of b.items) {
+    const v = await env.DB.prepare('SELECT * FROM varian WHERE id = ? AND user_id = ?').bind(item.varian_id, u.uid).first();
+    if (!v) return err(`Varian id ${item.varian_id} tidak ditemukan`, 404);
+    if (v.stok < item.qty) return err(`Stok "${v.nama}" tidak cukup (sisa ${v.stok})`, 409);
+    totalJual += v.harga_jual * item.qty;
+    totalHpp += v.hpp_final * item.qty;
+    rincian.push({ varian: v, qty: item.qty });
+  }
+  totalJual = round2(totalJual); totalHpp = round2(totalHpp);
+  const totalProfit = round2(totalJual - totalHpp);
+  const res = await env.DB.prepare(
+    'INSERT INTO transaksi (user_id, total_jual, total_hpp, total_profit, metode_bayar, catatan) VALUES (?, ?, ?, ?, ?, ?)'
+  ).bind(u.uid, totalJual, totalHpp, totalProfit, b.metode_bayar || 'Tunai', b.catatan || null).run();
+  const transaksiId = res.meta.last_row_id;
+  for (const r of rincian) {
+    await env.DB.prepare('INSERT INTO transaksi_item (transaksi_id, varian_id, nama_varian, qty, harga_satuan, hpp_satuan) VALUES (?, ?, ?, ?, ?, ?)')
+      .bind(transaksiId, r.varian.id, r.varian.nama, r.qty, r.varian.harga_jual, r.varian.hpp_final).run();
+    await env.DB.prepare('UPDATE varian SET stok = stok - ? WHERE id = ?').bind(r.qty, r.varian.id).run();
+    await env.DB.prepare('INSERT INTO stok_log (varian_id, perubahan, jenis) VALUES (?, ?, ?)').bind(r.varian.id, -r.qty, 'jual').run();
+  }
+  return json({ id: transaksiId, total_jual: totalJual, total_hpp: totalHpp, total_profit: totalProfit });
+});
+
+route('GET', '/api/transaksi', async (req, env, u) => {
+  const url = new URL(req.url);
+  const mulai = url.searchParams.get('mulai'), selesai = url.searchParams.get('selesai');
+  let q = 'SELECT * FROM transaksi WHERE user_id = ?'; const args = [u.uid];
+  if (mulai) { q += ' AND waktu >= ?'; args.push(mulai); }
+  if (selesai) { q += ' AND waktu <= ?'; args.push(selesai); }
+  q += ' ORDER BY waktu DESC LIMIT 200';
+  const { results } = await env.DB.prepare(q).bind(...args).all();
+  return json(results);
+});
+
+route('GET', '/api/transaksi/:id', async (req, env, u, params) => {
+  const t = await env.DB.prepare('SELECT * FROM transaksi WHERE id = ? AND user_id = ?').bind(params.id, u.uid).first();
+  if (!t) return err('Transaksi tidak ditemukan', 404);
+  const { results: items } = await env.DB.prepare('SELECT * FROM transaksi_item WHERE transaksi_id = ?').bind(params.id).all();
+  t.items = items;
+  return json(t);
+});
+
+route('DELETE', '/api/transaksi/:id', async (req, env, u, params) => {
+  const t = await env.DB.prepare('SELECT * FROM transaksi WHERE id = ? AND user_id = ?').bind(params.id, u.uid).first();
+  if (!t) return err('Transaksi tidak ditemukan', 404);
+  if (t.status === 'dibatalkan') return err('Transaksi sudah dibatalkan sebelumnya');
+  const { results: items } = await env.DB.prepare('SELECT * FROM transaksi_item WHERE transaksi_id = ?').bind(params.id).all();
+  for (const it of items) {
+    await env.DB.prepare('UPDATE varian SET stok = stok + ? WHERE id = ?').bind(it.qty, it.varian_id).run();
+    await env.DB.prepare('INSERT INTO stok_log (varian_id, perubahan, jenis, catatan) VALUES (?, ?, ?, ?)')
+      .bind(it.varian_id, it.qty, 'batal', `Batal transaksi #${params.id}`).run();
+  }
+  await env.DB.prepare(`UPDATE transaksi SET status='dibatalkan' WHERE id=?`).bind(params.id).run();
+  return json({ ok: true });
+});
+
+// ===================== DASHBOARD & LAPORAN =====================
+route('GET', '/api/dashboard', async (req, env, u) => {
+  const today = new Date().toISOString().slice(0, 10);
+  const row = await env.DB.prepare(
+    `SELECT COUNT(*) AS jumlah, COALESCE(SUM(total_jual),0) AS omzet, COALESCE(SUM(total_hpp),0) AS hpp, COALESCE(SUM(total_profit),0) AS profit
+     FROM transaksi WHERE user_id = ? AND status='selesai' AND date(waktu) = ?`
+  ).bind(u.uid, today).first();
+  const stokRendah = await env.DB.prepare(
+    'SELECT id, nama, stok, stok_minimum FROM varian WHERE user_id = ? AND aktif = 1 AND stok <= stok_minimum'
+  ).bind(u.uid).all();
+  return json({
+    tanggal: today, transaksi_hari_ini: row.jumlah, omzet_hari_ini: round2(row.omzet),
+    hpp_hari_ini: round2(row.hpp), profit_hari_ini: round2(row.profit), stok_rendah: stokRendah.results,
+  });
+});
+
+route('GET', '/api/laporan', async (req, env, u) => {
+  const url = new URL(req.url);
+  const mulai = url.searchParams.get('mulai') || '1970-01-01';
+  const selesai = url.searchParams.get('selesai') || '2999-12-31';
+  const ringkas = await env.DB.prepare(
+    `SELECT COUNT(*) AS jumlah_transaksi, COALESCE(SUM(total_jual),0) AS omzet, COALESCE(SUM(total_hpp),0) AS hpp, COALESCE(SUM(total_profit),0) AS profit
+     FROM transaksi WHERE user_id = ? AND status='selesai' AND date(waktu) BETWEEN ? AND ?`
+  ).bind(u.uid, mulai, selesai).first();
+  const { results: tren } = await env.DB.prepare(
+    `SELECT date(waktu) AS tanggal, COALESCE(SUM(total_jual),0) AS omzet, COALESCE(SUM(total_profit),0) AS profit
+     FROM transaksi WHERE user_id = ? AND status='selesai' AND date(waktu) BETWEEN ? AND ? GROUP BY date(waktu) ORDER BY tanggal`
+  ).bind(u.uid, mulai, selesai).all();
+  const { results: terlaris } = await env.DB.prepare(
+    `SELECT ti.nama_varian, SUM(ti.qty) AS qty_terjual, SUM(ti.qty * ti.harga_satuan) AS omzet, SUM(ti.qty * (ti.harga_satuan - ti.hpp_satuan)) AS profit
+     FROM transaksi_item ti JOIN transaksi t ON t.id = ti.transaksi_id
+     WHERE t.user_id = ? AND t.status='selesai' AND date(t.waktu) BETWEEN ? AND ?
+     GROUP BY ti.varian_id ORDER BY qty_terjual DESC LIMIT 10`
+  ).bind(u.uid, mulai, selesai).all();
+  const margin = ringkas.omzet > 0 ? round2((ringkas.profit / ringkas.omzet) * 100) : 0;
+  return json({
+    mulai, selesai, jumlah_transaksi: ringkas.jumlah_transaksi, omzet: round2(ringkas.omzet), hpp: round2(ringkas.hpp),
+    profit: round2(ringkas.profit), margin_persen: margin, tren_harian: tren, produk_terlaris: terlaris,
+  });
+});
+
+// ===================== Backup / Reset =====================
+route('GET', '/api/backup', async (req, env, u) => {
+  const tables = ['bahan_baku', 'resep', 'resep_bahan', 'varian', 'varian_topping', 'transaksi', 'transaksi_item', 'stok_log'];
+  const data = { exported_at: new Date().toISOString() };
+  for (const t of tables) { const { results } = await env.DB.prepare(`SELECT * FROM ${t}`).all(); data[t] = results; }
+  return json(data);
+});
+
+route('POST', '/api/reset', async (req, env, u) => {
+  const b = await req.json();
+  const user = await env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(u.uid).first();
+  const { hash } = await pbkdf2Hash(b.password || '', user.password_salt);
+  if (hash !== user.password_hash) return err('Password salah', 401);
+
+  const varianIds = (await env.DB.prepare('SELECT id FROM varian WHERE user_id = ?').bind(u.uid).all()).results.map(r => r.id);
+  if (varianIds.length) {
+    await env.DB.prepare(`DELETE FROM stok_log WHERE varian_id IN (${varianIds.join(',')})`).run();
+    await env.DB.prepare(`DELETE FROM transaksi_item WHERE varian_id IN (${varianIds.join(',')})`).run();
+    await env.DB.prepare(`DELETE FROM varian_topping WHERE varian_id IN (${varianIds.join(',')})`).run();
+  }
+  await env.DB.prepare('DELETE FROM transaksi WHERE user_id = ?').bind(u.uid).run();
+  await env.DB.prepare('DELETE FROM varian WHERE user_id = ?').bind(u.uid).run();
+  const resepIds = (await env.DB.prepare('SELECT id FROM resep WHERE user_id = ?').bind(u.uid).all()).results.map(r => r.id);
+  if (resepIds.length) await env.DB.prepare(`DELETE FROM resep_bahan WHERE resep_id IN (${resepIds.join(',')})`).run();
+  await env.DB.prepare('DELETE FROM resep WHERE user_id = ?').bind(u.uid).run();
+  await env.DB.prepare('DELETE FROM bahan_baku WHERE user_id = ?').bind(u.uid).run();
+  return json({ ok: true });
+});
+
+// ---------- Router ----------
+
+function matchRoute(pathname, pattern) {
+  const p1 = pathname.split('/').filter(Boolean);
+  const p2 = pattern.split('/').filter(Boolean);
+  if (p1.length !== p2.length) return null;
+  const params = {};
+  for (let i = 0; i < p2.length; i++) {
+    if (p2[i].startsWith(':')) params[p2[i].slice(1)] = p1[i];
+    else if (p2[i] !== p1[i]) return null;
+  }
+  return params;
 }
 
-// ============================================================
-// ROUTER UTAMA
-// ============================================================
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    const path = url.pathname;
-
     if (request.method === 'OPTIONS') {
-      return json({});
+      return new Response(null, { headers: {
+        'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      }});
     }
-
-    try {
-      // --- Rute publik (tanpa auth) ---
-      if (path.startsWith('/api/auth/')) {
-        return await handleAuth(request, env, path);
-      }
-
-      // --- Semua rute di bawah ini butuh auth ---
-      const user = await getAuthUser(request, env);
-      if (!user) return errorResponse('Unauthorized. Silakan login kembali.', 401);
-
-      // --- Rute yang tidak butuh org aktif ---
-      if (path === '/api/organizations' || path === '/api/organizations/gabung') {
-        return await handleOrganizations(request, env, path, user);
-      }
-      if (path.startsWith('/api/profil')) {
-        // org aktif opsional untuk profil (dipakai kalau ada, misal untuk tampilkan jabatan)
-        const orgIdHeader = request.headers.get('X-Org-Id');
-        let orgCtx = null;
-        if (orgIdHeader) {
-          orgCtx = await getActiveOrgId(request, env, user.id);
-          if (orgCtx.error) orgCtx = null; // abaikan kalau org tidak valid, profil tetap bisa diakses
+    if (url.pathname.startsWith('/api/')) {
+      try {
+        for (const r of routes) {
+          if (r.method !== request.method) continue;
+          const params = matchRoute(url.pathname, r.pattern);
+          if (!params) continue;
+          let user = null;
+          if (r.auth) { user = await getUser(request, env); if (!user) return err('Tidak terautentikasi', 401); }
+          const res = await r.handler(request, env, user, params);
+          res.headers.set('Access-Control-Allow-Origin', '*');
+          return res;
         }
-        return await handleProfil(request, env, path, user, orgCtx);
-      }
-
-      // --- Rute yang WAJIB org aktif tervalidasi ---
-      const orgCtx = await getActiveOrgId(request, env, user.id);
-      if (orgCtx.error) return errorResponse(orgCtx.error, 403);
-      const orgId = orgCtx.orgId;
-
-      if (path.startsWith('/api/akun')) return await handleAkun(request, env, path, orgId, user);
-      if (path.startsWith('/api/kategori')) return await handleKategori(request, env, path, orgId);
-      if (path.startsWith('/api/anggota')) return await handleAnggota(request, env, path, orgId, user);
-      if (path.startsWith('/api/iuran')) return await handleIuran(request, env, path, orgId, user);
-      if (path.startsWith('/api/transaksi')) return await handleTransaksi(request, env, path, orgId, user);
-      if (path.startsWith('/api/dashboard')) return await handleDashboard(request, env, path, orgId, user);
-      if (path.startsWith('/api/laporan')) return await handleLaporan(request, env, path, orgId, user);
-      if (path.startsWith('/api/notifikasi')) return await handleNotifikasi(request, env, path, orgId, user);
-
-      return errorResponse('Endpoint tidak ditemukan', 404);
-    } catch (err) {
-      return errorResponse(`Terjadi kesalahan server: ${err.message}`, 500);
+        return err('Endpoint tidak ditemukan', 404);
+      } catch (e) { return err('Terjadi kesalahan server: ' + e.message, 500); }
     }
+    return env.ASSETS.fetch(request);
   },
 };
