@@ -2,1711 +2,919 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-<title>Kas Kita</title>
-<link rel="manifest" href="/manifest.json" />
-<meta name="theme-color" content="#1b5e3a" />
-<link rel="icon" href="/icon-192.png" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>Kasir HPP</title>
+<meta name="theme-color" content="#2C5F5A" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="icon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --hijau-tua: #1b5e3a;
-    --hijau-gelap2: #14442b;
-    --hijau-muda: #e8f3ec;
-    --hijau-aksen: #2d8659;
-    --krem: #f4f8f4;
-    --putih: #ffffff;
-    --merah: #d9534f;
-    --merah-muda: #fdeceb;
-    --abu: #6b7280;
-    --abu-muda: #9ca3af;
-    --border: #e5e7eb;
-    --biru: #3b82f6;
-    --kuning: #f0ad4e;
-    --radius: 14px;
-    --radius-sm: 10px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  :root{
+    --paper:#F3EFE6; --paper-2:#EAE3D4; --ink:#26211B; --ink-soft:#5B5348; --line:#D9D0BC;
+    --teal:#2C5F5A; --teal-dark:#1E4744; --teal-tint:#DCE7E4;
+    --mustard:#C08A28; --mustard-tint:#F3E6C9; --brick:#A63D40; --brick-tint:#F3DCDC;
+    --card:#FBF9F3; --shadow: 0 1px 0 rgba(38,33,27,.06); --radius: 14px; --radius-sm: 9px;
+    --safe-b: env(safe-area-inset-bottom, 0px); --safe-t: env(safe-area-inset-top, 0px);
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: var(--krem);
-    color: #1f2937;
-    -webkit-tap-highlight-color: transparent;
-    padding-bottom: 84px;
+  [data-theme="gelap"]{
+    --paper:#1B1815; --paper-2:#221E19; --ink:#EFE9DE; --ink-soft:#B4AA9A; --line:#3A342B;
+    --teal:#4F8983; --teal-dark:#3C6E69; --teal-tint:#22302E;
+    --mustard:#D9A44A; --mustard-tint:#332A17; --brick:#C15A5D; --brick-tint:#332020;
+    --card:#221E19; --shadow: 0 1px 0 rgba(0,0,0,.3);
   }
-  button { font-family: inherit; cursor: pointer; }
-  input, select, textarea { font-family: inherit; }
-  .hidden { display: none !important; }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{ margin:0; background:var(--paper); color:var(--ink); font-family:'IBM Plex Sans', sans-serif; font-size:15px; line-height:1.45; overscroll-behavior-y:none; }
+  h1,h2,h3,.serif{ font-family:'Zilla Slab', serif; letter-spacing:.1px; }
+  .mono{ font-family:'IBM Plex Mono', monospace; }
+  button, input, select, textarea{ font-family:inherit; font-size:inherit; color:inherit; }
+  button{ cursor:pointer; }
+  a{ color:inherit; }
+  #app{ max-width:480px; margin:0 auto; min-height:100%; display:flex; flex-direction:column; position:relative; }
 
-  /* ---------- Layout umum ---------- */
-  .page { padding: 20px 16px 24px; max-width: 480px; margin: 0 auto; }
-  .page-header { margin-bottom: 16px; }
-  .page-title { font-size: 26px; font-weight: 700; color: #111827; }
-  .page-subtitle { font-size: 13px; color: var(--abu); margin-top: 2px; }
+  .topbar{ position:sticky; top:0; z-index:20; background:var(--paper); padding:calc(14px + var(--safe-t)) 18px 12px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--line); }
+  .topbar h1{ margin:0; font-size:20px; font-weight:700; }
+  .topbar .sub{ color:var(--ink-soft); font-size:12.5px; margin-top:2px; }
+  .icon-btn{ width:38px; height:38px; border-radius:50%; border:1px solid var(--line); background:var(--card); display:flex; align-items:center; justify-content:center; }
 
-  .card {
-    background: var(--putih);
-    border-radius: var(--radius);
-    padding: 16px;
-    margin-bottom: 14px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-  }
+  main{ flex:1; padding:16px 16px calc(96px + var(--safe-b)); }
 
-  .btn {
-    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-    border: none; border-radius: var(--radius-sm); padding: 13px 18px;
-    font-size: 15px; font-weight: 600; width: 100%;
-  }
-  .btn-primary { background: linear-gradient(135deg, var(--hijau-aksen), var(--hijau-tua)); color: #fff; }
-  .btn-outline { background: #fff; border: 1.5px solid var(--hijau-tua); color: var(--hijau-tua); }
-  .btn-danger-outline { background: #fff; border: 1.5px solid var(--merah); color: var(--merah); }
-  .btn-sm { padding: 8px 14px; font-size: 13px; width: auto; }
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); }
+  .card + .card{ margin-top:12px; }
+  .section-title{ display:flex; align-items:baseline; justify-content:space-between; margin:22px 0 10px; }
+  .section-title h2{ font-size:16.5px; margin:0; }
+  .section-title .hint{ font-size:12.5px; color:var(--ink-soft); }
 
-  .field { margin-bottom: 14px; }
-  .field label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
-  .field input, .field select, .field textarea {
-    width: 100%; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
-    padding: 12px 14px; font-size: 14px; background: #fff;
-  }
-  .field input:focus, .field select:focus, .field textarea:focus {
-    outline: none; border-color: var(--hijau-aksen);
-  }
-  .input-icon-wrap { position: relative; }
-  .input-icon-wrap input { padding-left: 42px; }
-  .input-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 16px; }
+  .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .grid-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
 
-  .error-text { color: var(--merah); font-size: 13px; margin-top: 6px; }
-  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
-  .badge-hijau { background: var(--hijau-muda); color: var(--hijau-tua); }
-  .badge-merah { background: var(--merah-muda); color: var(--merah); }
+  .stat{ background:var(--card); border:1px solid var(--line); border-radius:var(--radius-sm); padding:12px 12px; }
+  .stat .label{ font-size:11.5px; color:var(--ink-soft); }
+  .stat .value{ font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:17px; margin-top:4px; }
+  .stat.profit .value{ color:var(--teal-dark); }
+  .stat.warn .value{ color:var(--brick); }
+  [data-theme="gelap"] .stat.profit .value{ color:var(--teal); }
 
-  /* ---------- Bottom nav ---------- */
-  .bottom-nav {
-    position: fixed; bottom: 0; left: 0; right: 0; background: #fff;
-    border-top: 1px solid var(--border); display: flex; justify-content: space-around;
-    padding: 8px 4px calc(8px + env(safe-area-inset-bottom));
-    max-width: 480px; margin: 0 auto; z-index: 50;
-  }
-  .nav-item { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; color: var(--abu); background: none; border: none; flex: 1; padding: 4px; }
-  .nav-item.active { color: var(--hijau-tua); font-weight: 700; }
-  .nav-item .nav-icon { font-size: 20px; }
-  .nav-item-catat {
-    display: flex; align-items: center; justify-content: center;
-    width: 46px; height: 46px; border-radius: 50%;
-    background: linear-gradient(135deg, var(--hijau-aksen), var(--hijau-tua));
-    color: #fff; font-size: 24px; margin-top: -18px;
-    box-shadow: 0 3px 10px rgba(27,94,58,0.35);
-  }
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:var(--radius-sm); border:1px solid var(--line); background:var(--card); padding:11px 16px; font-weight:600; font-size:14.5px; width:100%; }
+  .btn-primary{ background:var(--teal); color:#fff; border-color:var(--teal); }
+  .btn-primary:active{ background:var(--teal-dark); }
+  .btn-ghost{ background:transparent; }
+  .btn-danger{ color:var(--brick); border-color:var(--brick); background:transparent; }
+  .btn-sm{ padding:7px 12px; font-size:13px; width:auto; }
+  .btn:disabled{ opacity:.45; }
+  .btn-row{ display:flex; gap:10px; margin-top:14px; }
+  .btn-row .btn{ flex:1; }
 
-  /* ---------- Toast ---------- */
-  #toast-container { position: fixed; top: 16px; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 200; pointer-events: none; }
-  .toast { background: #1f2937; color: #fff; padding: 10px 18px; border-radius: 999px; font-size: 13px; max-width: 90%; text-align: center; }
-  .toast.error { background: var(--merah); }
-  .toast.success { background: var(--hijau-tua); }
+  label{ display:block; font-size:12.5px; color:var(--ink-soft); margin:12px 0 5px; }
+  label:first-child{ margin-top:0; }
+  input, select, textarea{ width:100%; padding:11px 12px; border-radius:var(--radius-sm); border:1px solid var(--line); background:var(--paper); color:var(--ink); }
+  textarea{ resize:vertical; min-height:60px; }
+  input:focus, select:focus, textarea:focus{ outline:2px solid var(--teal); outline-offset:1px; }
 
-  /* ---------- Loading ---------- */
-  .spinner { width: 22px; height: 22px; border: 3px solid #d1e7db; border-top-color: var(--hijau-tua); border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .loading-center { display: flex; justify-content: center; padding: 40px 0; }
+  #tela-auth{ flex:1; display:flex; flex-direction:column; justify-content:center; padding:28px 26px; }
+  .auth-mark{ font-family:'Zilla Slab',serif; font-weight:700; font-size:30px; margin:0 0 2px; }
+  .auth-tag{ color:var(--ink-soft); font-size:13.5px; margin-bottom:26px; }
+  .auth-toggle{ display:flex; gap:18px; margin-bottom:18px; border-bottom:1px solid var(--line); }
+  .auth-toggle button{ background:none; border:none; padding:8px 0; font-weight:600; color:var(--ink-soft); border-bottom:2px solid transparent; margin-bottom:-1px; }
+  .auth-toggle button.aktif{ color:var(--ink); border-color:var(--teal); }
+  .form-err{ color:var(--brick); font-size:13px; margin-top:10px; min-height:16px; }
 
-  /* ---------- Modal / bottom sheet ---------- */
-  .sheet-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 150;
-    display: flex; align-items: flex-end; justify-content: center;
-  }
-  .sheet { background: #fff; border-radius: 20px 20px 0 0; width: 100%; max-width: 480px; max-height: 88vh; overflow-y: auto; padding: 20px 16px calc(20px + env(safe-area-inset-bottom)); }
-  .sheet-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px; }
-  .sheet-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  nav.tabs{ position:fixed; left:0; right:0; bottom:0; z-index:30; max-width:480px; margin:0 auto; background:var(--card); border-top:1px solid var(--line); display:flex; padding:6px 4px calc(6px + var(--safe-b)); }
+  nav.tabs button{ flex:1; background:none; border:none; display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 2px; color:var(--ink-soft); font-size:10.5px; font-weight:600; border-radius:10px; }
+  nav.tabs button svg{ width:21px; height:21px; }
+  nav.tabs button.aktif{ color:var(--teal); }
+
+  .produk-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .produk-tile{ text-align:left; border:1px solid var(--line); background:var(--card); border-radius:var(--radius-sm); padding:12px; position:relative; overflow:hidden; }
+  .produk-tile:active{ background:var(--teal-tint); }
+  .produk-tile .nama{ font-weight:600; font-size:14px; display:block; margin-bottom:6px; }
+  .produk-tile .harga{ font-family:'IBM Plex Mono',monospace; color:var(--teal-dark); font-weight:600; font-size:14px; }
+  [data-theme="gelap"] .produk-tile .harga{ color:var(--teal); }
+  .produk-tile .stok{ position:absolute; top:10px; right:10px; font-size:10.5px; color:var(--ink-soft); }
+  .produk-tile.habis{ opacity:.4; }
+  .produk-tile .badge-stok-rendah{ position:absolute; top:0; left:0; width:5px; height:100%; background:var(--brick); }
+
+  .keranjang-bar{ position:fixed; left:0; right:0; bottom:calc(64px + var(--safe-b)); z-index:25; max-width:480px; margin:0 auto; padding:0 16px; }
+  .keranjang-bar .isi{ background:var(--ink); color:var(--paper); border-radius:var(--radius); padding:13px 16px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 6px 18px rgba(0,0,0,.18); }
+  [data-theme="gelap"] .keranjang-bar .isi{ background:var(--teal); }
+  .keranjang-bar .kiri{ font-size:13.5px; }
+  .keranjang-bar .kiri b{ font-family:'IBM Plex Mono',monospace; display:block; font-size:16px; }
+  .keranjang-bar button{ background:var(--mustard); color:#221A0A; border:none; border-radius:9px; padding:9px 16px; font-weight:700; }
+
+  .overlay{ position:fixed; inset:0; background:rgba(20,17,13,.45); z-index:40; display:flex; align-items:flex-end; opacity:0; pointer-events:none; transition:opacity .18s; }
+  .overlay.terbuka{ opacity:1; pointer-events:auto; }
+  .sheet{ background:var(--paper); width:100%; max-width:480px; margin:0 auto; border-radius:18px 18px 0 0; padding:18px 18px calc(22px + var(--safe-b)); max-height:88vh; overflow-y:auto; transform:translateY(16px); transition:transform .18s; }
+  .overlay.terbuka .sheet{ transform:translateY(0); }
+  .sheet-handle{ width:38px; height:4px; background:var(--line); border-radius:3px; margin:0 auto 14px; }
+  .sheet-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .sheet-head h3{ margin:0; font-size:17px; }
+
+  .list-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 0; border-bottom:1px solid var(--line); }
+  .list-row:last-child{ border-bottom:none; }
+  .list-row .info b{ display:block; font-size:14.5px; }
+  .list-row .info span{ font-size:12.5px; color:var(--ink-soft); }
+  .list-row .kanan{ text-align:right; font-family:'IBM Plex Mono',monospace; font-size:14px; font-weight:600; white-space:nowrap; }
+  .chip{ display:inline-block; font-size:10.5px; font-weight:600; padding:2px 8px; border-radius:999px; background:var(--teal-tint); color:var(--teal-dark); }
+  [data-theme="gelap"] .chip{ color:var(--teal); }
+  .chip.mustard{ background:var(--mustard-tint); color:var(--mustard); }
+  .chip.brick{ background:var(--brick-tint); color:var(--brick); }
+
+  .subtabs{ display:flex; gap:6px; margin-bottom:14px; background:var(--paper-2); padding:4px; border-radius:11px; }
+  .subtabs button{ flex:1; background:none; border:none; padding:8px 4px; border-radius:8px; font-weight:600; font-size:12.8px; color:var(--ink-soft); }
+  .subtabs button.aktif{ background:var(--card); color:var(--ink); box-shadow:var(--shadow); }
+
+  .empty{ text-align:center; padding:40px 12px; color:var(--ink-soft); }
+  .empty svg{ width:40px; height:40px; margin-bottom:10px; opacity:.5; }
+
+  .toast{ position:fixed; left:50%; bottom:calc(100px + var(--safe-b)); transform:translateX(-50%); background:var(--ink); color:var(--paper); padding:10px 18px; border-radius:999px; font-size:13.5px; z-index:60; opacity:0; pointer-events:none; transition:opacity .2s, bottom .2s; }
+  .toast.tampil{ opacity:1; bottom:calc(110px + var(--safe-b)); }
+
+  .bahan-row{ display:flex; gap:6px; align-items:center; margin-bottom:8px; flex-wrap:wrap; }
+  .bahan-row select:first-child{ flex:2 1 100%; } .bahan-row input{ flex:1; min-width:0; }
+  .bahan-row button{ background:none; border:none; color:var(--brick); width:26px; flex:0 0 auto; }
+
+  .switch-row{ display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--line); }
+  .switch{ position:relative; width:42px; height:24px; }
+  .switch input{ opacity:0; width:0; height:0; }
+  .switch .track{ position:absolute; inset:0; background:var(--line); border-radius:999px; transition:.2s; }
+  .switch .track:before{ content:''; position:absolute; width:18px; height:18px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s; }
+  .switch input:checked + .track{ background:var(--teal); }
+  .switch input:checked + .track:before{ transform:translateX(18px); }
+
+  .rincian-hpp{ margin-top:10px; }
+  .rincian-hpp .baris{ display:flex; justify-content:space-between; padding:5px 0; font-size:13px; color:var(--ink-soft); }
+  .rincian-hpp .baris.total{ border-top:1px solid var(--line); margin-top:4px; padding-top:8px; font-weight:700; color:var(--ink); font-size:14.5px; }
+
+  .loading-screen{ flex:1; display:flex; align-items:center; justify-content:center; color:var(--ink-soft); }
+  .hidden{ display:none !important; }
 </style>
 </head>
 <body>
+<div id="app">
 
-<div id="toast-container"></div>
-<div id="app"></div>
-<div id="modal-root"></div>
+  <div id="tela-auth" class="hidden">
+    <div class="auth-mark">Kasir HPP</div>
+    <div class="auth-tag">Bahan Baku → Master Resep → Varian Menu → Kasir.</div>
+    <div class="auth-toggle">
+      <button id="tab-login" class="aktif" onclick="setModeAuth('login')">Masuk</button>
+      <button id="tab-daftar" onclick="setModeAuth('daftar')">Daftar Usaha Baru</button>
+    </div>
+    <form id="form-auth" onsubmit="return submitAuth(event)">
+      <div id="field-nama-usaha" class="hidden">
+        <label>Nama usaha</label>
+        <input type="text" id="in-nama-usaha" placeholder="Contoh: Dapur Bunda">
+      </div>
+      <label>Email</label>
+      <input type="email" id="in-email" required placeholder="nama@email.com">
+      <label>Password</label>
+      <input type="password" id="in-password" required minlength="6" placeholder="Minimal 6 karakter">
+      <div class="form-err" id="auth-err"></div>
+      <div class="btn-row"><button type="submit" class="btn btn-primary" id="btn-auth-submit">Masuk</button></div>
+    </form>
+  </div>
+
+  <div id="tela-app" class="hidden">
+    <div class="topbar">
+      <div><h1 id="judul-halaman">Beranda</h1><div class="sub" id="subjudul-halaman">—</div></div>
+      <button class="icon-btn" onclick="pindahTab('profil')" aria-label="Profil">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="19" height="19"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c1.4-3.6 4.4-5.5 7.5-5.5s6.1 1.9 7.5 5.5"/></svg>
+      </button>
+    </div>
+
+    <main id="konten"></main>
+
+    <div class="keranjang-bar hidden" id="bar-keranjang">
+      <div class="isi" onclick="bukaKeranjang()">
+        <div class="kiri">Keranjang · <span id="keranjang-jumlah">0</span> item<b id="keranjang-total">Rp 0</b></div>
+        <button onclick="event.stopPropagation(); bukaKeranjang()">Bayar</button>
+      </div>
+    </div>
+
+    <nav class="tabs">
+      <button data-tab="beranda" onclick="pindahTab('beranda')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9h12v-9"/></svg>Beranda
+      </button>
+      <button data-tab="kasir" onclick="pindahTab('kasir')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="7" width="16" height="12" rx="1.5"/><path d="M8 7V5.5A2.5 2.5 0 0 1 10.5 3h3A2.5 2.5 0 0 1 16 5.5V7"/></svg>Kasir
+      </button>
+      <button data-tab="racik" onclick="pindahTab('racik')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 3v6L5 19a1.5 1.5 0 0 0 1.4 2h11.2A1.5 1.5 0 0 0 19 19l-4-10V3"/><path d="M9 3h6"/></svg>Racik
+      </button>
+      <button data-tab="laporan" onclick="pindahTab('laporan')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 19V9M12 19V5M19 19v-6"/></svg>Laporan
+      </button>
+      <button data-tab="profil" onclick="pindahTab('profil')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c1.4-3.6 4.4-5.5 7.5-5.5s6.1 1.9 7.5 5.5"/></svg>Profil
+      </button>
+    </nav>
+  </div>
+
+  <div class="overlay" id="overlay" onclick="if(event.target===this) tutupSheet()">
+    <div class="sheet" id="sheet-konten"></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
 
 <script>
-// ============================================================
-// API CLIENT
-// ============================================================
-const API_BASE = ''; // sama origin dengan worker (Cloudflare Workers Sites / custom domain)
+/* ====================================================================
+   Kasir HPP v2 — Bahan Baku -> Master Resep -> Varian Menu -> Kasir
+   ==================================================================== */
+const API = '/api';
+let TOKEN = localStorage.getItem('kh_token') || null;
+let USER = JSON.parse(localStorage.getItem('kh_user') || 'null');
+let TEMA = localStorage.getItem('kh_tema') || 'terang';
+document.documentElement.setAttribute('data-theme', TEMA);
 
-const Store = {
-  get token() { return localStorage.getItem('kk_token'); },
-  set token(v) { v ? localStorage.setItem('kk_token', v) : localStorage.removeItem('kk_token'); },
-  get orgId() { return localStorage.getItem('kk_org_id'); },
-  set orgId(v) { v ? localStorage.setItem('kk_org_id', v) : localStorage.removeItem('kk_org_id'); },
-  get user() { try { return JSON.parse(localStorage.getItem('kk_user') || 'null'); } catch { return null; } },
-  set user(v) { v ? localStorage.setItem('kk_user', JSON.stringify(v)) : localStorage.removeItem('kk_user'); },
-  clearAll() {
-    localStorage.removeItem('kk_token');
-    localStorage.removeItem('kk_org_id');
-    localStorage.removeItem('kk_user');
-  },
+let STATE = {
+  tab: 'beranda',
+  subtabRacik: 'bahan',
+  bahan: [], resep: [], varian: [], dashboard: null, laporan: null,
+  keranjang: {}, // varian_id -> qty
+  periodeLaporan: 7,
 };
 
-async function api(path, { method = 'GET', body, skipOrg = false } = {}) {
-  const headers = { 'Content-Type': 'application/json' };
-  if (Store.token) headers['Authorization'] = 'Bearer ' + Store.token;
-  if (!skipOrg && Store.orgId) headers['X-Org-Id'] = Store.orgId;
-
-  let res;
-  try {
-    res = await fetch(API_BASE + path, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
-  } catch (e) {
-    throw new Error('Tidak bisa terhubung ke server. Cek koneksi internet Anda.');
-  }
-
-  let data = null;
-  try { data = await res.json(); } catch { /* respons bukan JSON */ }
-
-  if (res.status === 401) {
-    Store.clearAll();
-    location.hash = '#/login';
-    throw new Error((data && data.message) || 'Sesi berakhir, silakan login kembali');
-  }
-  if (!res.ok) {
-    throw new Error((data && data.message) || `Terjadi kesalahan (${res.status})`);
-  }
+// ---------- fetch helper ----------
+async function api(path, opts = {}) {
+  const headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
+  if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
+  const res = await fetch(API + path, Object.assign({}, opts, { headers }));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Terjadi kesalahan');
   return data;
 }
-
-function showToast(message, type = 'default') {
-  const el = document.createElement('div');
-  el.className = 'toast ' + (type === 'error' ? 'error' : type === 'success' ? 'success' : '');
-  el.textContent = message;
-  document.getElementById('toast-container').appendChild(el);
-  setTimeout(() => el.remove(), 3000);
+function rupiah(n) { n = Math.round(Number(n) || 0); return 'Rp ' + n.toLocaleString('id-ID'); }
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('tampil');
+  clearTimeout(t._timer); t._timer = setTimeout(() => t.classList.remove('tampil'), 2200);
 }
 
-function formatRupiah(angka) {
-  const n = Math.round(Number(angka) || 0);
-  return 'Rp ' + n.toLocaleString('id-ID');
+// ---------- AUTH ----------
+function setModeAuth(mode) {
+  document.getElementById('tab-login').classList.toggle('aktif', mode === 'login');
+  document.getElementById('tab-daftar').classList.toggle('aktif', mode === 'daftar');
+  document.getElementById('field-nama-usaha').classList.toggle('hidden', mode !== 'daftar');
+  document.getElementById('btn-auth-submit').textContent = mode === 'daftar' ? 'Buat akun & mulai' : 'Masuk';
+  document.getElementById('form-auth').dataset.mode = mode;
+  document.getElementById('auth-err').textContent = '';
 }
-
-function formatTanggal(iso) {
-  if (!iso) return '-';
-  const d = new Date(iso.length <= 10 ? iso + 'T00:00:00' : iso);
-  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-}
-
-function formatBulanTahun(periodeYYYYMM) {
-  if (!periodeYYYYMM) return '-';
-  const [y, m] = periodeYYYYMM.split('-');
-  const namaBulan = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-  return `${namaBulan[parseInt(m,10)-1]} ${y}`;
-}
-
-function escapeHtml(str) {
-  if (str === null || str === undefined) return '';
-  return String(str).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-// ============================================================
-// ROUTER
-// ============================================================
-const app = document.getElementById('app');
-
-const ROUTES = {
-  '/login': { render: renderLogin, auth: false },
-  '/register': { render: renderRegister, auth: false },
-  '/lupa-password': { render: renderLupaPassword, auth: false },
-  '/pilih-organisasi': { render: renderPilihOrganisasi, auth: true, needOrg: false },
-  '/beranda': { render: renderBeranda, auth: true, needOrg: true, nav: 'beranda' },
-  '/anggota': { render: renderAnggota, auth: true, needOrg: true, nav: 'anggota' },
-  '/catat': { render: renderCatat, auth: true, needOrg: true, nav: 'catat' },
-  '/laporan': { render: renderLaporan, auth: true, needOrg: true, nav: 'laporan' },
-  '/profil': { render: renderProfil, auth: true, needOrg: false, nav: 'profil' },
-};
-
-async function router() {
-  let hash = location.hash.replace('#', '') || '/login';
-  let route = ROUTES[hash];
-  if (!route) { location.hash = '#/login'; return; }
-
-  if (route.auth && !Store.token) { location.hash = '#/login'; return; }
-  if (!route.auth && Store.token && (hash === '/login' || hash === '/register')) {
-    location.hash = Store.orgId ? '#/beranda' : '#/pilih-organisasi';
-    return;
-  }
-  if (route.needOrg && !Store.orgId) { location.hash = '#/pilih-organisasi'; return; }
-
-  app.innerHTML = '<div class="loading-center"><div class="spinner"></div></div>';
+async function submitAuth(e) {
+  e.preventDefault();
+  const mode = document.getElementById('form-auth').dataset.mode || 'login';
+  const email = document.getElementById('in-email').value.trim();
+  const password = document.getElementById('in-password').value;
+  const errEl = document.getElementById('auth-err');
+  errEl.textContent = '';
   try {
-    const html = await route.render();
-    app.innerHTML = html + (route.nav ? renderBottomNav(route.nav) : '');
-    if (typeof window['after_' + route.render.name] === 'function') {
-      window['after_' + route.render.name]();
-    }
-  } catch (e) {
-    app.innerHTML = `<div class="page"><div class="card"><p class="error-text">${escapeHtml(e.message)}</p></div></div>` + (route.nav ? renderBottomNav(route.nav) : '');
+    const payload = { email, password };
+    if (mode === 'daftar') payload.nama_usaha = document.getElementById('in-nama-usaha').value.trim() || 'Usaha Saya';
+    const data = await api('/auth/' + (mode === 'daftar' ? 'register' : 'login'), { method: 'POST', body: JSON.stringify(payload) });
+    TOKEN = data.token; USER = data.user;
+    localStorage.setItem('kh_token', TOKEN); localStorage.setItem('kh_user', JSON.stringify(USER));
+    await masukKeApp();
+  } catch (err) { errEl.textContent = err.message; }
+  return false;
+}
+function keluar() {
+  localStorage.removeItem('kh_token'); localStorage.removeItem('kh_user');
+  TOKEN = null; USER = null;
+  document.getElementById('tela-app').classList.add('hidden');
+  document.getElementById('tela-auth').classList.remove('hidden');
+}
+
+// ---------- Boot ----------
+async function boot() {
+  if (TOKEN && USER) await masukKeApp();
+  else document.getElementById('tela-auth').classList.remove('hidden');
+}
+async function masukKeApp() {
+  document.getElementById('tela-auth').classList.add('hidden');
+  document.getElementById('tela-app').classList.remove('hidden');
+  await muatSemuaData();
+  pindahTab('beranda');
+}
+async function muatSemuaData() {
+  const [bahan, resep, varian] = await Promise.all([api('/bahan'), api('/resep'), api('/varian')]);
+  STATE.bahan = bahan; STATE.resep = resep; STATE.varian = varian;
+}
+
+// ---------- Navigasi ----------
+const JUDUL = {
+  beranda: ['Beranda', () => USER ? USER.nama_usaha : ''],
+  kasir: ['Kasir', () => 'Ketuk varian untuk tambah ke keranjang'],
+  racik: ['Racik', () => 'Bahan Baku, Master Resep, Varian Menu'],
+  laporan: ['Laporan', () => 'Omzet, HPP, dan profit usahamu'],
+  profil: ['Profil', () => USER ? USER.email : ''],
+};
+async function pindahTab(tab) {
+  STATE.tab = tab;
+  document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('aktif', b.dataset.tab === tab));
+  document.getElementById('judul-halaman').textContent = JUDUL[tab][0];
+  document.getElementById('subjudul-halaman').textContent = JUDUL[tab][1]();
+  document.getElementById('bar-keranjang').classList.toggle('hidden', tab !== 'kasir' || jumlahKeranjang() === 0);
+  const konten = document.getElementById('konten');
+  konten.innerHTML = '<div class="loading-screen">Memuat…</div>';
+  try {
+    if (tab === 'beranda') await renderBeranda();
+    else if (tab === 'kasir') await renderKasir();
+    else if (tab === 'racik') await renderRacik();
+    else if (tab === 'laporan') await renderLaporan();
+    else if (tab === 'profil') renderProfil();
+  } catch (e) { konten.innerHTML = '<div class="empty">' + e.message + '</div>'; }
+}
+
+// ---------- BERANDA ----------
+async function renderBeranda() {
+  STATE.dashboard = await api('/dashboard');
+  const d = STATE.dashboard;
+  const konten = document.getElementById('konten');
+  let stokHtml = '';
+  if (d.stok_rendah.length) {
+    stokHtml = `<div class="section-title"><h2>Perlu restock</h2><span class="hint">${d.stok_rendah.length} varian</span></div>
+    <div class="card">` + d.stok_rendah.map(v => `
+      <div class="list-row"><div class="info"><b>${escapeHtml(v.nama)}</b><span>Sisa stok ${v.stok}</span></div><span class="chip brick">Stok rendah</span></div>`).join('') + `</div>`;
   }
-}
-
-window.addEventListener('hashchange', router);
-window.addEventListener('DOMContentLoaded', router);
-
-function renderBottomNav(active) {
-  const items = [
-    { key: 'beranda', icon: '🏠', label: 'Beranda', href: '#/beranda' },
-    { key: 'anggota', icon: '👥', label: 'Anggota', href: '#/anggota' },
-    { key: 'catat', icon: '+', label: 'Catat', href: '#/catat', isCenter: true },
-    { key: 'laporan', icon: '📄', label: 'Laporan', href: '#/laporan' },
-    { key: 'profil', icon: '👤', label: 'Profil', href: '#/profil' },
-  ];
-  return `<nav class="bottom-nav">
-    ${items.map(it => it.isCenter
-      ? `<a href="${it.href}" class="nav-item ${active===it.key?'active':''}"><span class="nav-item-catat">${it.icon}</span></a>`
-      : `<a href="${it.href}" class="nav-item ${active===it.key?'active':''}"><span class="nav-icon">${it.icon}</span><span>${it.label}</span></a>`
-    ).join('')}
-  </nav>`;
-}
-
-function goTo(hash) { location.hash = '#' + hash; }
-
-// ============================================================
-// HALAMAN: LOGIN
-// ============================================================
-async function renderLogin() {
-  return `
-  <div class="page" style="padding-top:48px">
-    <div style="text-align:center;margin-bottom:24px">
-      <div style="width:72px;height:72px;border-radius:20px;background:linear-gradient(135deg,var(--hijau-aksen),var(--hijau-tua));display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:34px;color:#fff">💰</div>
-      <h1 style="font-size:30px;font-weight:800;color:var(--hijau-tua)">KAS KITA</h1>
-      <p style="color:var(--abu);font-size:13px;margin-top:6px">Kelola keuangan organisasi anda<br/>dengan mudah dan transparan</p>
+  konten.innerHTML = `
+    <div class="grid-2">
+      <div class="stat"><div class="label">Transaksi hari ini</div><div class="value">${d.transaksi_hari_ini}</div></div>
+      <div class="stat profit"><div class="label">Profit hari ini</div><div class="value">${rupiah(d.profit_hari_ini)}</div></div>
+      <div class="stat"><div class="label">Omzet hari ini</div><div class="value">${rupiah(d.omzet_hari_ini)}</div></div>
+      <div class="stat"><div class="label">HPP hari ini</div><div class="value">${rupiah(d.hpp_hari_ini)}</div></div>
     </div>
+    ${stokHtml}
+    <div class="section-title"><h2>Mulai jualan</h2></div>
     <div class="card">
-      <h2 style="font-size:19px;font-weight:700;margin-bottom:2px">🌿 Selamat Datang Kembali!</h2>
-      <p style="color:var(--abu);font-size:13px;margin-bottom:18px">Silakan masuk untuk melanjutkan</p>
-      <form id="form-login">
-        <div class="field">
-          <label>Email</label>
-          <div class="input-icon-wrap"><span class="input-icon">👤</span><input type="email" id="login-email" required placeholder="nama@email.com" /></div>
-        </div>
-        <div class="field">
-          <label>Password</label>
-          <div class="input-icon-wrap"><span class="input-icon">🔒</span><input type="password" id="login-password" required placeholder="Password" /></div>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;font-size:13px">
-          <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="checkbox" id="login-ingat" checked style="width:auto"/> Ingat saya</label>
-          <a href="#/lupa-password" style="color:var(--hijau-tua);font-weight:600;text-decoration:none">Lupa Password?</a>
-        </div>
-        <div id="login-error" class="error-text hidden"></div>
-        <button type="submit" class="btn btn-primary" id="btn-login">Masuk</button>
-      </form>
-      <p style="text-align:center;margin-top:18px;font-size:13px;color:var(--abu)">Belum punya akun? <a href="#/register" style="color:var(--hijau-tua);font-weight:700;text-decoration:none">Daftar sekarang</a></p>
-    </div>
-  </div>`;
-}
-function after_renderLogin() {
-  document.getElementById('form-login').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = document.getElementById('btn-login');
-    const errEl = document.getElementById('login-error');
-    errEl.classList.add('hidden');
-    btn.textContent = 'Memproses...'; btn.disabled = true;
-    try {
-      const res = await api('/api/auth/login', { method: 'POST', skipOrg: true, body: {
-        email: document.getElementById('login-email').value.trim(),
-        password: document.getElementById('login-password').value,
-        ingat_saya: document.getElementById('login-ingat').checked,
-      }});
-      Store.token = res.token;
-      Store.user = res.user;
-      goTo('/pilih-organisasi');
-    } catch (err) {
-      errEl.textContent = err.message; errEl.classList.remove('hidden');
-    } finally {
-      btn.textContent = 'Masuk'; btn.disabled = false;
-    }
-  });
-}
-
-// ============================================================
-// HALAMAN: REGISTER
-// ============================================================
-async function renderRegister() {
-  return `
-  <div class="page" style="padding-top:32px">
-    <div class="page-header" style="text-align:center">
-      <h1 class="page-title" style="color:var(--hijau-tua)">Daftar Akun</h1>
-      <p class="page-subtitle">Buat akun untuk mulai kelola keuangan organisasi</p>
-    </div>
-    <div class="card">
-      <form id="form-register">
-        <div class="field"><label>Nama Lengkap</label><input type="text" id="reg-nama" required /></div>
-        <div class="field"><label>Email</label><input type="email" id="reg-email" required /></div>
-        <div class="field"><label>No. HP (opsional)</label><input type="tel" id="reg-hp" /></div>
-        <div class="field"><label>Password</label><input type="password" id="reg-password" required minlength="6" placeholder="Minimal 6 karakter" /></div>
-        <div id="register-error" class="error-text hidden"></div>
-        <button type="submit" class="btn btn-primary" id="btn-register">Daftar</button>
-      </form>
-      <p style="text-align:center;margin-top:16px;font-size:13px;color:var(--abu)">Sudah punya akun? <a href="#/login" style="color:var(--hijau-tua);font-weight:700;text-decoration:none">Masuk</a></p>
-    </div>
-  </div>`;
-}
-function after_renderRegister() {
-  document.getElementById('form-register').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = document.getElementById('btn-register');
-    const errEl = document.getElementById('register-error');
-    errEl.classList.add('hidden');
-    btn.textContent = 'Memproses...'; btn.disabled = true;
-    try {
-      const res = await api('/api/auth/register', { method: 'POST', skipOrg: true, body: {
-        nama: document.getElementById('reg-nama').value.trim(),
-        email: document.getElementById('reg-email').value.trim(),
-        password: document.getElementById('reg-password').value,
-        no_hp: document.getElementById('reg-hp').value.trim(),
-      }});
-      Store.token = res.token;
-      Store.user = res.user;
-      showToast('Akun berhasil dibuat', 'success');
-      goTo('/pilih-organisasi');
-    } catch (err) {
-      errEl.textContent = err.message; errEl.classList.remove('hidden');
-    } finally {
-      btn.textContent = 'Daftar'; btn.disabled = false;
-    }
-  });
-}
-
-// ============================================================
-// HALAMAN: LUPA PASSWORD
-// ============================================================
-async function renderLupaPassword() {
-  return `
-  <div class="page" style="padding-top:32px">
-    <div class="page-header"><h1 class="page-title">Lupa Password</h1><p class="page-subtitle">Masukkan email Anda, kami akan kirim link reset password</p></div>
-    <div class="card">
-      <form id="form-lupa">
-        <div class="field"><label>Email</label><input type="email" id="lupa-email" required /></div>
-        <div id="lupa-msg" class="hidden" style="font-size:13px;margin-bottom:12px"></div>
-        <button type="submit" class="btn btn-primary" id="btn-lupa">Kirim Link Reset</button>
-      </form>
-      <p style="text-align:center;margin-top:16px;font-size:13px"><a href="#/login" style="color:var(--hijau-tua);font-weight:700;text-decoration:none">← Kembali ke Login</a></p>
-    </div>
-  </div>`;
-}
-function after_renderLupaPassword() {
-  document.getElementById('form-lupa').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = document.getElementById('btn-lupa');
-    const msgEl = document.getElementById('lupa-msg');
-    btn.textContent = 'Mengirim...'; btn.disabled = true;
-    try {
-      const res = await api('/api/auth/forgot-password', { method: 'POST', skipOrg: true, body: {
-        email: document.getElementById('lupa-email').value.trim(),
-      }});
-      msgEl.textContent = res.message; msgEl.style.color = 'var(--hijau-tua)'; msgEl.classList.remove('hidden');
-    } catch (err) {
-      msgEl.textContent = err.message; msgEl.style.color = 'var(--merah)'; msgEl.classList.remove('hidden');
-    } finally {
-      btn.textContent = 'Kirim Link Reset'; btn.disabled = false;
-    }
-  });
-}
-
-// ============================================================
-// HALAMAN: PILIH ORGANISASI
-// ============================================================
-async function renderPilihOrganisasi() {
-  const res = await api('/api/organizations', { skipOrg: true });
-  const orgs = res.organizations || [];
-  return `
-  <div class="page" style="padding-top:32px">
-    <div class="page-header"><h1 class="page-title">Pilih Organisasi</h1><p class="page-subtitle">Pilih organisasi yang ingin dikelola, atau buat/gabung baru</p></div>
-    ${orgs.length > 0 ? `<div class="card">
-      ${orgs.map(o => `<button class="btn btn-outline" style="margin-bottom:10px;justify-content:space-between" onclick="pilihOrganisasi('${o.id}')">
-        <span>${escapeHtml(o.nama)}</span><span style="font-size:12px;color:var(--abu)">${escapeHtml(o.jabatan)}</span>
-      </button>`).join('')}
-    </div>` : `<div class="card"><p style="color:var(--abu);font-size:13px">Anda belum tergabung di organisasi manapun.</p></div>`}
-    <div class="card">
-      <button class="btn btn-primary" style="margin-bottom:10px" onclick="bukaFormBuatOrganisasi()">+ Buat Organisasi Baru</button>
-      <button class="btn btn-outline" onclick="bukaFormGabungOrganisasi()">🔗 Gabung dengan Kode</button>
-    </div>
-    <button class="btn btn-danger-outline" onclick="logout()">Keluar Akun</button>
-  </div>`;
-}
-function pilihOrganisasi(orgId) { Store.orgId = orgId; goTo('/beranda'); }
-function logout() { Store.clearAll(); goTo('/login'); }
-
-function bukaFormBuatOrganisasi() {
-  openSheet('Buat Organisasi Baru', `
-    <div class="field"><label>Nama Organisasi</label><input type="text" id="org-nama-baru" placeholder="Contoh: Kas Kelas 1B Zaenab" /></div>
-    <div id="org-baru-error" class="error-text hidden"></div>
-    <button class="btn btn-primary" id="btn-buat-org">Buat Organisasi</button>
-  `);
-  document.getElementById('btn-buat-org').addEventListener('click', async () => {
-    const nama = document.getElementById('org-nama-baru').value.trim();
-    const errEl = document.getElementById('org-baru-error');
-    if (!nama) { errEl.textContent = 'Nama organisasi wajib diisi'; errEl.classList.remove('hidden'); return; }
-    try {
-      const res = await api('/api/organizations', { method: 'POST', skipOrg: true, body: { nama } });
-      closeSheet();
-      Store.orgId = res.organization.id;
-      showToast(`Organisasi dibuat! Kode: ${res.organization.kode_id}`, 'success');
-      goTo('/beranda');
-    } catch (err) {
-      errEl.textContent = err.message; errEl.classList.remove('hidden');
-    }
-  });
-}
-
-function bukaFormGabungOrganisasi() {
-  openSheet('Gabung dengan Kode', `
-    <div class="field"><label>Kode ID Organisasi</label><input type="text" id="org-kode-gabung" placeholder="Contoh: KITA-1B-ZAENAB-001" style="text-transform:uppercase" /></div>
-    <div id="org-gabung-error" class="error-text hidden"></div>
-    <button class="btn btn-primary" id="btn-gabung-org">Gabung</button>
-  `);
-  document.getElementById('btn-gabung-org').addEventListener('click', async () => {
-    const kode = document.getElementById('org-kode-gabung').value.trim();
-    const errEl = document.getElementById('org-gabung-error');
-    if (!kode) { errEl.textContent = 'Kode organisasi wajib diisi'; errEl.classList.remove('hidden'); return; }
-    try {
-      const res = await api('/api/organizations/gabung', { method: 'POST', skipOrg: true, body: { kode_id: kode } });
-      closeSheet();
-      Store.orgId = res.organization.id;
-      showToast('Berhasil gabung organisasi', 'success');
-      goTo('/beranda');
-    } catch (err) {
-      errEl.textContent = err.message; errEl.classList.remove('hidden');
-    }
-  });
-}
-
-// ============================================================
-// BOTTOM SHEET HELPER
-// ============================================================
-function openSheet(title, bodyHtml) {
-  document.getElementById('modal-root').innerHTML = `
-    <div class="sheet-overlay" id="sheet-overlay" onclick="if(event.target===this) closeSheet()">
-      <div class="sheet">
-        <div class="sheet-handle"></div>
-        <div class="sheet-title">${escapeHtml(title)}</div>
-        <div style="margin-top:14px">${bodyHtml}</div>
-      </div>
+      <p style="margin:0 0 12px;color:var(--ink-soft);font-size:13.5px">Buka kasir untuk mencatat transaksi baru.</p>
+      <button class="btn btn-primary" onclick="pindahTab('kasir')">Buka Kasir</button>
     </div>`;
 }
-function closeSheet() { document.getElementById('modal-root').innerHTML = ''; }
 
-// ============================================================
-// HALAMAN: BERANDA
-// ============================================================
-async function renderBeranda() {
-  const [dash, orgsRes] = await Promise.all([
-    api('/api/dashboard/summary'),
-    api('/api/organizations', { skipOrg: true }),
-  ]);
-  const orgAktif = (orgsRes.organizations || []).find(o => o.id === Store.orgId);
-  if (orgAktif) localStorage.setItem('kk_org_nama_cache', JSON.stringify({ nama: orgAktif.nama }));
-  const user = Store.user || {};
-  const jamSekarang = new Date().getHours();
-  const salam = jamSekarang < 11 ? 'Selamat Pagi' : jamSekarang < 15 ? 'Selamat Siang' : jamSekarang < 18 ? 'Selamat Sore' : 'Selamat Malam';
-
-  return `
-  <div class="page">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
-      <div>
-        <p style="font-size:13px;color:var(--abu)">${salam} 👋</p>
-        <h1 style="font-size:20px;font-weight:800">${escapeHtml(user.nama || 'Admin')}</h1>
-      </div>
-      <button onclick="goTo('/profil')" style="width:40px;height:40px;border-radius:50%;background:#fff;border:1px solid var(--border);font-size:18px">🔔</button>
-    </div>
-    <button class="btn btn-outline btn-sm" style="margin-bottom:14px" onclick="goTo('/profil')">🛡️ ${escapeHtml(orgAktif ? orgAktif.nama : '-')} ⌄</button>
-
-    <div class="card" style="background:linear-gradient(135deg,var(--hijau-aksen),var(--hijau-gelap2));color:#fff">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <p style="font-size:12px;opacity:0.85;letter-spacing:0.5px">TOTAL SALDO</p>
-        <button onclick="bukaPreviewSaldo()" style="background:rgba(255,255,255,0.2);color:#fff;border:none;border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600">Preview ›</button>
-      </div>
-      <p style="font-size:30px;font-weight:800;margin:6px 0 14px">${formatRupiah(dash.total_saldo)}</p>
-      <div style="border-top:1px solid rgba(255,255,255,0.25);padding-top:12px;display:flex">
-        <div style="flex:1">
-          <p style="font-size:11px;opacity:0.85">↓ TOTAL PEMASUKAN</p>
-          <p style="font-size:15px;font-weight:700">${formatRupiah(dash.total_pemasukan)}</p>
-        </div>
-        <div style="flex:1;border-left:1px solid rgba(255,255,255,0.25);padding-left:12px">
-          <p style="font-size:11px;opacity:0.85">↑ TOTAL PENGELUARAN</p>
-          <p style="font-size:15px;font-weight:700">${formatRupiah(dash.total_pengeluaran)}</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <p style="font-weight:700;margin-bottom:10px">📅 Ringkasan Bulan Ini</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div style="background:var(--krem);border-radius:10px;padding:10px"><p style="font-size:11px;color:var(--abu)">Pemasukan</p><p style="font-weight:700;color:var(--hijau-tua)">${formatRupiah(dash.ringkasan_bulan_ini.pemasukan)}</p></div>
-        <div style="background:var(--krem);border-radius:10px;padding:10px"><p style="font-size:11px;color:var(--abu)">Pengeluaran</p><p style="font-weight:700;color:var(--merah)">${formatRupiah(dash.ringkasan_bulan_ini.pengeluaran)}</p></div>
-        <div style="background:var(--krem);border-radius:10px;padding:10px"><p style="font-size:11px;color:var(--abu)">Saldo Awal</p><p style="font-weight:700">${formatRupiah(dash.ringkasan_bulan_ini.saldo_awal)}</p></div>
-        <div style="background:var(--krem);border-radius:10px;padding:10px"><p style="font-size:11px;color:var(--abu)">Saldo Akhir</p><p style="font-weight:700">${formatRupiah(dash.ringkasan_bulan_ini.saldo_akhir)}</p></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <p style="font-weight:700;margin-bottom:10px">⚡ Menu Cepat</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <button class="btn btn-outline btn-sm" onclick="goTo('/catat')">Pemasukan</button>
-        <button class="btn btn-outline btn-sm" onclick="goTo('/catat')">Pengeluaran</button>
-        <button class="btn btn-outline btn-sm" onclick="goTo('/catat')">Transfer</button>
-        <button class="btn btn-outline btn-sm" onclick="goTo('/catat')">Penyesuaian</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <p style="font-weight:700">Transaksi Terbaru</p>
-        <a href="#/laporan" style="font-size:13px;color:var(--hijau-tua);font-weight:600;text-decoration:none">Lihat Semua ›</a>
-      </div>
-      ${(dash.transaksi_terbaru || []).length === 0 ? `<p style="font-size:13px;color:var(--abu);text-align:center;padding:16px 0">Belum ada transaksi</p>` :
-        (dash.transaksi_terbaru || []).map(t => renderItemTransaksi(t)).join('')}
-    </div>
-
-    ${!dash.ada_catatan_hari_ini ? `
-    <div class="card" style="background:var(--hijau-muda)">
-      <p style="font-weight:700;color:var(--hijau-tua)">Belum ada catatan hari ini</p>
-      <p style="font-size:13px;color:var(--abu);margin:4px 0 10px">Yuk catat pemasukan atau pengeluaran agar keuangan tetap terkontrol!</p>
-      <button class="btn btn-outline btn-sm" onclick="goTo('/catat')">Catat Sekarang</button>
-    </div>` : ''}
-  </div>`;
-}
-
-function renderItemTransaksi(t) {
-  const masuk = t.tipe === 'masuk';
-  const warnaIkon = masuk ? 'var(--hijau-muda)' : 'var(--merah-muda)';
-  const ikon = masuk ? '↓' : t.tipe === 'keluar' ? '↑' : t.tipe === 'transfer' ? '⇄' : '⚙';
-  const tanda = masuk ? '+' : t.tipe === 'keluar' ? '-' : '';
-  const warnaTeks = masuk ? 'var(--hijau-tua)' : t.tipe === 'keluar' ? 'var(--merah)' : '#111827';
-  return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--krem)">
-    <div style="width:36px;height:36px;border-radius:10px;background:${warnaIkon};display:flex;align-items:center;justify-content:center;font-size:16px">${ikon}</div>
-    <div style="flex:1;min-width:0">
-      <p style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(t.keterangan || t.kategori_nama || '-')}</p>
-      <p style="font-size:12px;color:var(--abu)">${escapeHtml(t.kategori_nama || t.tipe)}</p>
-    </div>
-    <div style="text-align:right">
-      <p style="font-weight:700;color:${warnaTeks}">${tanda}${formatRupiah(t.jumlah)}</p>
-      <p style="font-size:11px;color:var(--abu)">${formatTanggal(t.tanggal)}</p>
-    </div>
-  </div>`;
-}
-
-async function bukaPreviewSaldo() {
-  openSheet('Breakdown Saldo per Akun', '<div class="loading-center"><div class="spinner"></div></div>');
-  try {
-    const res = await api('/api/akun');
-    const html = `
-      ${(res.akun || []).map(a => `<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--krem)">
-        <span>${escapeHtml(a.nama)}</span><span style="font-weight:700">${formatRupiah(a.saldo)}</span>
-      </div>`).join('')}
-      <div style="display:flex;justify-content:space-between;padding-top:12px;font-weight:700">
-        <span>Total</span><span>${formatRupiah(res.total_saldo)}</span>
-      </div>`;
-    document.querySelector('.sheet > div:last-child').innerHTML = html;
-  } catch (e) {
-    document.querySelector('.sheet > div:last-child').innerHTML = `<p class="error-text">${escapeHtml(e.message)}</p>`;
-  }
-}
-
-// ============================================================
-// HALAMAN: ANGGOTA
-// ============================================================
-let anggotaState = { page: 1, search: '' };
-
-async function renderAnggota() {
-  const res = await api(`/api/anggota?page=${anggotaState.page}&search=${encodeURIComponent(anggotaState.search)}`);
-  const s = res.statistik;
-  const totalPage = Math.max(1, Math.ceil(res.pagination.total / res.pagination.per_page));
-
-  return `
-  <div class="page">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
-      <div><h1 class="page-title">Anggota</h1><p class="page-subtitle">Kelola data anggota organisasi</p></div>
-      <button class="btn btn-primary btn-sm" onclick="bukaFormAnggota()">+ Tambah</button>
-    </div>
-
-    <input type="text" id="anggota-search" placeholder="Cari nama anggota atau nomor HP..." value="${escapeHtml(anggotaState.search)}"
-      style="width:100%;border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:14px" />
-
-    <div class="card">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div><p style="font-size:12px;color:var(--abu)">👥 Total Anggota</p><p style="font-size:20px;font-weight:800;color:var(--hijau-tua)">${s.total_anggota} Orang</p></div>
-        <div><p style="font-size:12px;color:var(--abu)">✅ Sudah Bayar</p><p style="font-size:20px;font-weight:800;color:var(--hijau-tua)">${s.sudah_bayar} Orang</p></div>
-        <div><p style="font-size:12px;color:var(--abu)">🕐 Menunggak</p><p style="font-size:20px;font-weight:800;color:var(--merah)">${s.menunggak} Orang</p></div>
-        <div><p style="font-size:12px;color:var(--abu)">💰 Iuran Bulan Ini</p><p style="font-size:16px;font-weight:800;color:var(--biru)">${formatRupiah(s.total_iuran_bulan_ini)}</p></div>
-      </div>
-    </div>
-
-    <p style="font-weight:700;margin-bottom:8px">Daftar Anggota <span style="font-weight:400;color:var(--abu);font-size:13px">(${res.pagination.total} anggota)</span></p>
-    ${(res.anggota || []).length === 0 ? `<div class="card"><p style="text-align:center;color:var(--abu);font-size:13px">Tidak ada anggota ditemukan</p></div>` :
-      (res.anggota || []).map(a => renderCardAnggota(a)).join('')}
-
-    ${totalPage > 1 ? `<div style="display:flex;justify-content:center;gap:6px;margin-top:14px;flex-wrap:wrap">
-      ${Array.from({length: totalPage}, (_, i) => i+1).map(p => `<button class="btn btn-sm ${p===anggotaState.page?'btn-primary':'btn-outline'}" style="width:36px;padding:8px 0" onclick="gantiHalamanAnggota(${p})">${p}</button>`).join('')}
-    </div>` : ''}
-  </div>`;
-}
-
-function renderCardAnggota(a) {
-  const st = a.status_iuran;
-  const lunas = st.status_bulan_ini === 'lunas' || st.status_bulan_ini === 'tidak_dikenakan';
-  const inisial = a.nama.split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
-  return `<div class="card" style="padding:14px">
-    <div style="display:flex;gap:10px;align-items:flex-start">
-      <div style="width:44px;height:44px;border-radius:50%;background:var(--hijau-muda);color:var(--hijau-tua);display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0">${inisial}</div>
-      <div style="flex:1;min-width:0">
-        <p style="font-weight:700">${escapeHtml(a.nama)}</p>
-        <p style="font-size:12px;color:var(--abu)">${escapeHtml(a.no_hp || '-')}</p>
-        <span class="badge ${lunas ? 'badge-hijau' : 'badge-merah'}" style="margin-top:6px">${lunas ? '✓ Sudah Bayar' : '🕐 Menunggak'}</span>
-      </div>
-      <div style="text-align:right;flex-shrink:0">
-        <p style="font-size:12px;color:var(--abu)">${lunas ? 'Lunas sampai' : 'Tunggakan'}</p>
-        <p style="font-weight:700;color:${lunas?'var(--hijau-tua)':'var(--merah)'}">${lunas ? formatBulanTahun(st.lunas_sampai) : formatRupiah(st.tunggakan_rupiah)}</p>
-        <p style="font-size:11px;color:var(--abu)">${st.terakhir_bayar ? 'Terakhir: '+formatTanggal(st.terakhir_bayar) : ''}</p>
-      </div>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:10px">
-      <button class="btn btn-outline btn-sm" style="flex:1" onclick="lihatDetailAnggota('${a.id}')">👁 Lihat</button>
-      <button class="btn btn-outline btn-sm" onclick="menuAksiAnggota('${a.id}','${escapeHtml(a.nama).replace(/'/g,"\\'")}')">⋮</button>
-    </div>
-  </div>`;
-}
-
-function gantiHalamanAnggota(p) { anggotaState.page = p; router(); }
-
-function after_renderAnggota() {
-  let t;
-  document.getElementById('anggota-search').addEventListener('input', (e) => {
-    clearTimeout(t);
-    t = setTimeout(() => { anggotaState.search = e.target.value; anggotaState.page = 1; router(); }, 400);
-  });
-}
-
-function bukaFormAnggota(existing) {
-  const isEdit = !!existing;
-  openSheet(isEdit ? 'Edit Anggota' : 'Tambah Anggota', `
-    <div class="field"><label>Nama Lengkap</label><input type="text" id="af-nama" value="${isEdit ? escapeHtml(existing.nama) : ''}" /></div>
-    <div class="field"><label>No. HP</label><input type="tel" id="af-hp" value="${isEdit ? escapeHtml(existing.no_hp||'') : ''}" /></div>
-    <div class="field"><label>Tanggal Bergabung</label><input type="date" id="af-tanggal" value="${isEdit ? existing.tanggal_bergabung : new Date().toISOString().slice(0,10)}" /></div>
-    <div id="af-error" class="error-text hidden"></div>
-    <button class="btn btn-primary" id="btn-simpan-anggota">${isEdit ? 'Simpan Perubahan' : 'Tambah Anggota'}</button>
-  `);
-  document.getElementById('btn-simpan-anggota').addEventListener('click', async () => {
-    const errEl = document.getElementById('af-error');
-    const body = {
-      nama: document.getElementById('af-nama').value.trim(),
-      no_hp: document.getElementById('af-hp').value.trim(),
-      tanggal_bergabung: document.getElementById('af-tanggal').value,
-    };
-    if (!body.nama || !body.tanggal_bergabung) { errEl.textContent = 'Nama dan tanggal bergabung wajib diisi'; errEl.classList.remove('hidden'); return; }
-    try {
-      if (isEdit) await api(`/api/anggota/${existing.id}`, { method: 'PUT', body });
-      else await api('/api/anggota', { method: 'POST', body });
-      closeSheet();
-      showToast('Data anggota berhasil disimpan', 'success');
-      router();
-    } catch (err) {
-      errEl.textContent = err.message; errEl.classList.remove('hidden');
-    }
-  });
-}
-
-async function lihatDetailAnggota(id) {
-  openSheet('Detail Anggota', '<div class="loading-center"><div class="spinner"></div></div>');
-  try {
-    const res = await api(`/api/anggota/${id}/riwayat`);
-    const st = res.status_iuran;
-    const html = `
-      <p style="font-weight:700;font-size:16px">${escapeHtml(res.anggota.nama)}</p>
-      <p style="font-size:13px;color:var(--abu);margin-bottom:12px">${escapeHtml(res.anggota.no_hp || '-')} · Bergabung ${formatTanggal(res.anggota.tanggal_bergabung)}</p>
-      <div style="background:var(--krem);border-radius:10px;padding:12px;margin-bottom:14px">
-        <div style="display:flex;justify-content:space-between"><span style="font-size:13px;color:var(--abu)">Status bulan ini</span><span style="font-weight:700">${st.status_bulan_ini}</span></div>
-        <div style="display:flex;justify-content:space-between"><span style="font-size:13px;color:var(--abu)">Tunggakan</span><span style="font-weight:700;color:var(--merah)">${formatRupiah(st.tunggakan_rupiah)} (${st.tunggakan_bulan} bulan)</span></div>
-      </div>
-      <p style="font-weight:700;margin-bottom:8px">Riwayat Pembayaran</p>
-      ${(res.riwayat_pembayaran||[]).length === 0 ? '<p style="font-size:13px;color:var(--abu)">Belum ada riwayat pembayaran</p>' :
-        res.riwayat_pembayaran.map(p => `<div style="border-bottom:1px solid var(--krem);padding:8px 0">
-          <div style="display:flex;justify-content:space-between"><span style="font-weight:600">${formatTanggal(p.tanggal_pembayaran)}</span><span style="font-weight:700;color:var(--hijau-tua)">${formatRupiah(p.jumlah)}</span></div>
-          <p style="font-size:12px;color:var(--abu)">Periode: ${p.alokasi.map(a=>formatBulanTahun(a.periode)).join(', ')} · ${escapeHtml(p.metode_pembayaran)}</p>
-        </div>`).join('')}
-    `;
-    document.querySelector('.sheet > div:last-child').innerHTML = html;
-  } catch (e) {
-    document.querySelector('.sheet > div:last-child').innerHTML = `<p class="error-text">${escapeHtml(e.message)}</p>`;
-  }
-}
-
-function menuAksiAnggota(id, nama) {
-  openSheet(nama, `
-    <button class="btn btn-outline" style="margin-bottom:10px" onclick="closeSheet(); editAnggotaById('${id}')">✏️ Edit Data Anggota</button>
-    <button class="btn btn-danger-outline" onclick="konfirmasiKeluarkanAnggota('${id}','${nama.replace(/'/g,"\\'")}')">🚪 Keluarkan Anggota</button>
-  `);
-}
-
-async function editAnggotaById(id) {
-  try {
-    const res = await api(`/api/anggota/${id}/riwayat`);
-    bukaFormAnggota(res.anggota);
-  } catch (e) { showToast(e.message, 'error'); }
-}
-
-function konfirmasiKeluarkanAnggota(id, nama) {
-  openSheet('Keluarkan Anggota?', `
-    <p style="font-size:14px;margin-bottom:16px">Yakin ingin mengeluarkan <b>${escapeHtml(nama)}</b>? Riwayat transaksi & iuran tetap tersimpan untuk laporan, tapi anggota ini tidak akan muncul lagi di daftar aktif.</p>
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-outline" onclick="closeSheet()">Batal</button>
-      <button class="btn" style="background:var(--merah);color:#fff" onclick="keluarkanAnggota('${id}')">Ya, Keluarkan</button>
-    </div>
-  `);
-}
-async function keluarkanAnggota(id) {
-  try {
-    await api(`/api/anggota/${id}`, { method: 'DELETE' });
-    closeSheet();
-    showToast('Anggota berhasil dikeluarkan', 'success');
-    router();
-  } catch (e) { showToast(e.message, 'error'); }
-}
-
-// ============================================================
-// HALAMAN: CATAT
-// ============================================================
-let catatState = { tab: 'iuran', penyesuaianSub: null };
-
-async function renderCatat() {
-  const tabs = [
-    { key: 'iuran', label: 'Iuran Anggota', sub: 'Pemasukan', icon: '👥' },
-    { key: 'pemasukan_lain', label: 'Pemasukan Lain', sub: 'Pemasukan', icon: '💼' },
-    { key: 'pengeluaran', label: 'Pengeluaran', sub: 'Transaksi', icon: '🛒' },
-    { key: 'transfer', label: 'Transfer Antar Akun', sub: 'Transfer', icon: '⇄' },
-    { key: 'penyesuaian', label: 'Penyesuaian Saldo', sub: 'Penyesuaian', icon: '⚙️' },
-  ];
-  return `
-  <div class="page">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
-      <div><h1 class="page-title">Catat Transaksi</h1><p class="page-subtitle">Kelola pemasukan, pengeluaran, dan perpindahan dana</p></div>
-    </div>
-    <button class="btn btn-outline btn-sm" style="margin-bottom:14px" onclick="goTo('/laporan')">🕐 Riwayat Transaksi</button>
-
-    <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:14px">
-      ${tabs.map(t => `<button onclick="gantiTabCatat('${t.key}')" style="flex-shrink:0;min-width:110px;border-radius:12px;padding:12px 10px;text-align:center;border:1.5px solid ${catatState.tab===t.key?'var(--hijau-tua)':'var(--border)'};background:${catatState.tab===t.key?'var(--hijau-muda)':'#fff'}">
-        <div style="font-size:20px">${t.icon}</div>
-        <div style="font-size:12px;font-weight:700;margin-top:4px">${t.label}</div>
-        <div style="font-size:10px;color:var(--abu)">${t.sub}</div>
-      </button>`).join('')}
-    </div>
-
-    <div id="form-catat-container">${await renderFormCatat(catatState.tab)}</div>
-  </div>`;
-}
-
-function gantiTabCatat(key) {
-  catatState.tab = key;
-  catatState.penyesuaianSub = null;
-  router();
-}
-
-async function renderFormCatat(tab) {
-  if (tab === 'iuran') return await renderFormIuran();
-  if (tab === 'pemasukan_lain') return await renderFormPemasukanLain();
-  if (tab === 'pengeluaran') return await renderFormPengeluaran();
-  if (tab === 'transfer') return await renderFormTransfer();
-  if (tab === 'penyesuaian') return await renderPilihanPenyesuaian();
-  return '';
-}
-
-function after_renderCatat() { wireFormCatat(catatState.tab); }
-
-function wireFormCatat(tab) {
-  if (tab === 'iuran') wireFormIuran();
-  if (tab === 'pemasukan_lain') wireFormSederhana('pemasukan-lain', 'masuk');
-  if (tab === 'pengeluaran') wireFormSederhana('pengeluaran', 'keluar');
-  if (tab === 'transfer') wireFormTransfer();
-  if (tab === 'penyesuaian') wirePilihanPenyesuaian();
-}
-
-// ---------- Sub-form: Iuran Anggota ----------
-async function renderFormIuran() {
-  const [anggotaRes, akunRes, settingsRes] = await Promise.all([
-    api('/api/anggota?per_page=200'),
-    api('/api/akun'),
-    api('/api/iuran/settings'),
-  ]);
-  const anggotaList = anggotaRes.anggota || [];
-  const settings = settingsRes.settings;
-  if (!settings || !settings.nominal_bulanan) {
-    return `<div class="card"><p style="font-size:14px;color:var(--merah)">⚠️ Nominal iuran wajib belum diatur. Silakan atur dulu di tab <b>Penyesuaian → Penyesuaian Iuran Pokok</b>.</p></div>`;
-  }
-  return `
-  <div class="card">
-    <p style="font-weight:700;margin-bottom:2px">👥 Form Iuran Anggota</p>
-    <p style="font-size:13px;color:var(--abu);margin-bottom:16px">Catat pembayaran iuran anggota organisasi</p>
-    <form id="form-iuran">
-      <div class="field"><label>Pilih Anggota</label>
-        <select id="iuran-anggota-id" required>
-          <option value="">-- Pilih Anggota --</option>
-          ${anggotaList.map(a => `<option value="${a.id}">${escapeHtml(a.nama)} (${escapeHtml(a.no_hp||'-')})</option>`).join('')}
-        </select>
-      </div>
-      <div class="field"><label>Jumlah Dibayarkan</label><input type="number" id="iuran-jumlah" value="${settings.nominal_bulanan}" min="1" required /></div>
-      <div class="field"><label>Akun Penerima</label>
-        <select id="iuran-akun-id" required>${akunRes.akun.map(a => `<option value="${a.id}">${escapeHtml(a.nama)}</option>`).join('')}</select>
-      </div>
-      <div class="field"><label>Tanggal Pembayaran</label><input type="date" id="iuran-tanggal" value="${new Date().toISOString().slice(0,10)}" required /></div>
-      <div class="field"><label>Metode Pembayaran</label>
-        <select id="iuran-metode"><option>Tunai</option><option>Transfer Bank</option><option>QRIS</option><option>E-Wallet</option></select>
-      </div>
-      <div class="field"><label>Catatan (Opsional)</label><textarea id="iuran-catatan" maxlength="100" rows="2"></textarea></div>
-      <div id="iuran-error" class="error-text hidden"></div>
-      <button type="submit" class="btn btn-primary" id="btn-simpan-iuran">✓ Simpan Transaksi</button>
-    </form>
-  </div>`;
-}
-function wireFormIuran() {
-  const form = document.getElementById('form-iuran');
-  if (!form) return;
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const errEl = document.getElementById('iuran-error');
-    const btn = document.getElementById('btn-simpan-iuran');
-    const body = {
-      anggota_id: document.getElementById('iuran-anggota-id').value,
-      jumlah: Number(document.getElementById('iuran-jumlah').value),
-      akun_id: document.getElementById('iuran-akun-id').value,
-      tanggal_pembayaran: document.getElementById('iuran-tanggal').value,
-      metode_pembayaran: document.getElementById('iuran-metode').value,
-      catatan: document.getElementById('iuran-catatan').value.trim(),
-    };
-    if (!body.anggota_id) { errEl.textContent = 'Pilih anggota terlebih dahulu'; errEl.classList.remove('hidden'); return; }
-    btn.textContent = 'Menyimpan...'; btn.disabled = true;
-    try {
-      const res = await api('/api/iuran/bayar', { method: 'POST', body });
-      showToast('Iuran berhasil dicatat', 'success');
-      tampilkanHasilTransaksi(res.transaksi_id);
-      form.reset();
-    } catch (err) {
-      errEl.textContent = err.message; errEl.classList.remove('hidden');
-    } finally {
-      btn.textContent = '✓ Simpan Transaksi'; btn.disabled = false;
-    }
-  });
-}
-
-// ---------- Sub-form: Pemasukan Lain & Pengeluaran (struktur sama) ----------
-async function renderFormPemasukanLain() {
-  const [akunRes, kategoriRes] = await Promise.all([api('/api/akun'), api('/api/kategori?tipe=pemasukan')]);
-  return renderFormSederhanaHtml('pemasukan-lain', '💼 Form Pemasukan Lain', 'Catat pemasukan di luar iuran (donasi, dll)', akunRes.akun, kategoriRes.kategori, 'pemasukan');
-}
-async function renderFormPengeluaran() {
-  const [akunRes, kategoriRes] = await Promise.all([api('/api/akun'), api('/api/kategori?tipe=pengeluaran')]);
-  return renderFormSederhanaHtml('pengeluaran', '🛒 Form Pengeluaran', 'Catat pengeluaran kas organisasi', akunRes.akun, kategoriRes.kategori, 'pengeluaran');
-}
-
-function renderFormSederhanaHtml(prefix, judul, subjudul, akunList, kategoriList, tipeKategori) {
-  return `
-  <div class="card">
-    <p style="font-weight:700;margin-bottom:2px">${judul}</p>
-    <p style="font-size:13px;color:var(--abu);margin-bottom:16px">${subjudul}</p>
-    <form id="form-${prefix}">
-      <div class="field"><label>Keterangan</label><input type="text" id="${prefix}-keterangan" required placeholder="Contoh: Donasi sukarela" /></div>
-      <div class="field"><label>Jumlah</label><input type="number" id="${prefix}-jumlah" min="1" required /></div>
-      <div class="field"><label>Kategori</label>
-        <select id="${prefix}-kategori-id">
-          <option value="">Tanpa kategori</option>
-          ${kategoriList.map(k => `<option value="${k.id}">${escapeHtml(k.nama)}</option>`).join('')}
-          <option value="__baru__">+ Tambah Kategori Baru</option>
-        </select>
-      </div>
-      <div class="field"><label>Akun</label>
-        <select id="${prefix}-akun-id" required>${akunList.map(a => `<option value="${a.id}">${escapeHtml(a.nama)}</option>`).join('')}</select>
-      </div>
-      <div class="field"><label>Tanggal</label><input type="date" id="${prefix}-tanggal" value="${new Date().toISOString().slice(0,10)}" required /></div>
-      <div class="field"><label>Metode Pembayaran</label>
-        <select id="${prefix}-metode"><option>Tunai</option><option>Transfer Bank</option><option>QRIS</option><option>E-Wallet</option></select>
-      </div>
-      <div class="field"><label>Catatan (Opsional)</label><textarea id="${prefix}-catatan" maxlength="100" rows="2"></textarea></div>
-      <div id="${prefix}-error" class="error-text hidden"></div>
-      <button type="submit" class="btn btn-primary">✓ Simpan Transaksi</button>
-    </form>
-  </div>`;
-}
-
-function wireFormSederhana(prefix, tipe) {
-  const form = document.getElementById(`form-${prefix}`);
-  if (!form) return;
-  const kategoriSelect = document.getElementById(`${prefix}-kategori-id`);
-  kategoriSelect.addEventListener('change', async () => {
-    if (kategoriSelect.value !== '__baru__') return;
-    const nama = prompt('Nama kategori baru:');
-    kategoriSelect.value = '';
-    if (!nama || !nama.trim()) return;
-    try {
-      const res = await api('/api/kategori', { method: 'POST', body: { nama: nama.trim(), tipe: tipe === 'masuk' ? 'pemasukan' : 'pengeluaran' } });
-      const opt = document.createElement('option');
-      opt.value = res.id; opt.textContent = res.nama;
-      kategoriSelect.insertBefore(opt, kategoriSelect.lastElementChild);
-      kategoriSelect.value = res.id;
-    } catch (e) { showToast(e.message, 'error'); }
-  });
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const errEl = document.getElementById(`${prefix}-error`);
-    const body = {
-      keterangan: document.getElementById(`${prefix}-keterangan`).value.trim(),
-      jumlah: Number(document.getElementById(`${prefix}-jumlah`).value),
-      kategori_id: document.getElementById(`${prefix}-kategori-id`).value || null,
-      akun_id: document.getElementById(`${prefix}-akun-id`).value,
-      tanggal: document.getElementById(`${prefix}-tanggal`).value,
-      metode_pembayaran: document.getElementById(`${prefix}-metode`).value,
-      catatan: document.getElementById(`${prefix}-catatan`).value.trim(),
-    };
-    try {
-      const endpoint = tipe === 'masuk' ? '/api/transaksi/pemasukan-lain' : '/api/transaksi/pengeluaran';
-      const res = await api(endpoint, { method: 'POST', body });
-      showToast('Transaksi berhasil disimpan', 'success');
-      tampilkanHasilTransaksi(res.id);
-      form.reset();
-    } catch (err) {
-      errEl.textContent = err.message; errEl.classList.remove('hidden');
-    }
-  });
-}
-
-// ---------- Sub-form: Transfer ----------
-async function renderFormTransfer() {
-  const akunRes = await api('/api/akun');
-  const opts = akunRes.akun.map(a => `<option value="${a.id}">${escapeHtml(a.nama)}</option>`).join('');
-  return `
-  <div class="card">
-    <p style="font-weight:700;margin-bottom:2px">⇄ Form Transfer Antar Akun</p>
-    <p style="font-size:13px;color:var(--abu);margin-bottom:16px">Pindahkan dana antar akun kas organisasi</p>
-    <form id="form-transfer">
-      <div class="field"><label>Akun Asal</label><select id="transfer-asal" required>${opts}</select></div>
-      <div class="field"><label>Akun Tujuan</label><select id="transfer-tujuan" required>${opts}</select></div>
-      <div class="field"><label>Jumlah</label><input type="number" id="transfer-jumlah" min="1" required /></div>
-      <div class="field"><label>Tanggal</label><input type="date" id="transfer-tanggal" value="${new Date().toISOString().slice(0,10)}" required /></div>
-      <div class="field"><label>Catatan (Opsional)</label><textarea id="transfer-catatan" maxlength="100" rows="2"></textarea></div>
-      <div id="transfer-error" class="error-text hidden"></div>
-      <button type="submit" class="btn btn-primary">✓ Simpan Transfer</button>
-    </form>
-  </div>`;
-}
-function wireFormTransfer() {
-  const form = document.getElementById('form-transfer');
-  if (!form) return;
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const errEl = document.getElementById('transfer-error');
-    const body = {
-      akun_asal_id: document.getElementById('transfer-asal').value,
-      akun_tujuan_id: document.getElementById('transfer-tujuan').value,
-      jumlah: Number(document.getElementById('transfer-jumlah').value),
-      tanggal: document.getElementById('transfer-tanggal').value,
-      catatan: document.getElementById('transfer-catatan').value.trim(),
-    };
-    if (body.akun_asal_id === body.akun_tujuan_id) { errEl.textContent = 'Akun asal dan tujuan tidak boleh sama'; errEl.classList.remove('hidden'); return; }
-    try {
-      const res = await api('/api/transaksi/transfer', { method: 'POST', body });
-      showToast('Transfer berhasil disimpan', 'success');
-      tampilkanHasilTransaksi(res.id);
-      form.reset();
-    } catch (err) {
-      errEl.textContent = err.message; errEl.classList.remove('hidden');
-    }
-  });
-}
-
-// ---------- Sub-menu: Penyesuaian (Saldo & Iuran Pokok) ----------
-async function renderPilihanPenyesuaian() {
-  if (catatState.penyesuaianSub === 'saldo') return await renderFormPenyesuaianSaldo();
-  if (catatState.penyesuaianSub === 'iuran_pokok') return await renderFormIuranPokok();
-  return `
-  <div class="card">
-    <p style="font-weight:700;margin-bottom:2px">⚙️ Penyesuaian</p>
-    <p style="font-size:13px;color:var(--abu);margin-bottom:16px">Pilih jenis penyesuaian yang ingin dilakukan</p>
-    <button class="btn btn-outline" style="margin-bottom:10px;justify-content:flex-start" onclick="pilihSubPenyesuaian('saldo')">💰 Penyesuaian Saldo</button>
-    <button class="btn btn-outline" style="justify-content:flex-start" onclick="pilihSubPenyesuaian('iuran_pokok')">📌 Penyesuaian Iuran Pokok</button>
-  </div>`;
-}
-function pilihSubPenyesuaian(sub) {
-  catatState.penyesuaianSub = sub;
-  document.getElementById('form-catat-container').innerHTML = '<div class="loading-center"><div class="spinner"></div></div>';
-  renderPilihanPenyesuaian().then(html => {
-    document.getElementById('form-catat-container').innerHTML = html;
-    wirePilihanPenyesuaian();
-  });
-}
-function wirePilihanPenyesuaian() {
-  if (catatState.penyesuaianSub === 'saldo') wireFormPenyesuaianSaldo();
-  if (catatState.penyesuaianSub === 'iuran_pokok') wireFormIuranPokok();
-}
-
-async function renderFormPenyesuaianSaldo() {
-  const akunRes = await api('/api/akun');
-  return `
-  <div class="card">
-    <button onclick="kembaliKePilihanPenyesuaian()" style="background:none;border:none;color:var(--hijau-tua);font-weight:600;margin-bottom:10px;padding:0">← Kembali</button>
-    <p style="font-weight:700;margin-bottom:2px">💰 Penyesuaian Saldo</p>
-    <p style="font-size:13px;color:var(--abu);margin-bottom:16px">Koreksi saldo akun (bisa nambah atau mengurangi)</p>
-    <form id="form-penyesuaian-saldo">
-      <div class="field"><label>Akun</label><select id="ps-akun-id" required>${akunRes.akun.map(a => `<option value="${a.id}">${escapeHtml(a.nama)} (saldo: ${formatRupiah(a.saldo)})</option>`).join('')}</select></div>
-      <div class="field"><label>Jenis Penyesuaian</label>
-        <select id="ps-jenis"><option value="tambah">Tambah Saldo (+)</option><option value="kurang">Kurangi Saldo (-)</option></select>
-      </div>
-      <div class="field"><label>Jumlah</label><input type="number" id="ps-jumlah" min="1" required /></div>
-      <div class="field"><label>Tanggal</label><input type="date" id="ps-tanggal" value="${new Date().toISOString().slice(0,10)}" required /></div>
-      <div class="field"><label>Alasan Penyesuaian</label><textarea id="ps-catatan" maxlength="100" rows="2" placeholder="Contoh: koreksi salah input sebelumnya" required></textarea></div>
-      <div id="ps-error" class="error-text hidden"></div>
-      <button type="submit" class="btn btn-primary">✓ Simpan Penyesuaian</button>
-    </form>
-  </div>`;
-}
-function wireFormPenyesuaianSaldo() {
-  const form = document.getElementById('form-penyesuaian-saldo');
-  if (!form) return;
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const errEl = document.getElementById('ps-error');
-    const jenis = document.getElementById('ps-jenis').value;
-    const jumlahMentah = Number(document.getElementById('ps-jumlah').value);
-    const body = {
-      akun_id: document.getElementById('ps-akun-id').value,
-      jumlah: jenis === 'tambah' ? jumlahMentah : -jumlahMentah,
-      tanggal: document.getElementById('ps-tanggal').value,
-      catatan: document.getElementById('ps-catatan').value.trim(),
-    };
-    try {
-      const res = await api('/api/transaksi/penyesuaian', { method: 'POST', body });
-      showToast('Penyesuaian saldo berhasil disimpan', 'success');
-      tampilkanHasilTransaksi(res.id);
-      form.reset();
-    } catch (err) {
-      errEl.textContent = err.message; errEl.classList.remove('hidden');
-    }
-  });
-}
-
-async function renderFormIuranPokok() {
-  const res = await api('/api/iuran/settings');
-  const s = res.settings;
-  return `
-  <div class="card">
-    <button onclick="kembaliKePilihanPenyesuaian()" style="background:none;border:none;color:var(--hijau-tua);font-weight:600;margin-bottom:10px;padding:0">← Kembali</button>
-    <p style="font-weight:700;margin-bottom:2px">📌 Penyesuaian Iuran Pokok</p>
-    <p style="font-size:13px;color:var(--abu);margin-bottom:16px">Atur nominal iuran wajib bulanan dan tanggal mulai organisasi</p>
-    <form id="form-iuran-pokok">
-      <div class="field"><label>Nominal Iuran per Bulan</label><input type="number" id="ip-nominal" min="0" value="${s ? s.nominal_bulanan : 0}" required /></div>
-      <div class="field"><label>Tanggal Mulai Organisasi</label><input type="date" id="ip-tanggal-mulai" value="${s ? s.tanggal_mulai_organisasi : new Date().toISOString().slice(0,10)}" required /></div>
-      <p style="font-size:12px;color:var(--abu);margin-bottom:14px">Perubahan ini akan memengaruhi perhitungan status lunas/menunggak semua anggota mulai sekarang.</p>
-      <div id="ip-error" class="error-text hidden"></div>
-      <button type="submit" class="btn btn-primary">✓ Simpan Pengaturan</button>
-    </form>
-  </div>`;
-}
-function wireFormIuranPokok() {
-  const form = document.getElementById('form-iuran-pokok');
-  if (!form) return;
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const errEl = document.getElementById('ip-error');
-    const body = {
-      nominal_bulanan: Number(document.getElementById('ip-nominal').value),
-      tanggal_mulai_organisasi: document.getElementById('ip-tanggal-mulai').value,
-    };
-    try {
-      await api('/api/iuran/settings', { method: 'PUT', body });
-      showToast('Pengaturan iuran berhasil disimpan', 'success');
-    } catch (err) {
-      errEl.textContent = err.message; errEl.classList.remove('hidden');
-    }
-  });
-}
-function kembaliKePilihanPenyesuaian() {
-  catatState.penyesuaianSub = null;
-  document.getElementById('form-catat-container').innerHTML = '<div class="loading-center"><div class="spinner"></div></div>';
-  renderPilihanPenyesuaian().then(html => { document.getElementById('form-catat-container').innerHTML = html; });
-}
-
-// ---------- Hasil transaksi: preview struk + tombol bagikan ----------
-async function tampilkanHasilTransaksi(transaksiId) {
-  try {
-    const res = await api(`/api/transaksi/${transaksiId}`);
-    openSheet('Transaksi Tersimpan', `
-      <div id="struk-preview-area" style="margin-bottom:16px"></div>
-      <div style="display:flex;gap:8px;margin-bottom:8px">
-        <button class="btn btn-outline btn-sm" style="flex:1" onclick="bagikanStruk('${transaksiId}','whatsapp')">WhatsApp</button>
-        <button class="btn btn-outline btn-sm" style="flex:1" onclick="bagikanStruk('${transaksiId}','telegram')">Telegram</button>
-      </div>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-outline btn-sm" style="flex:1" onclick="bagikanStruk('${transaksiId}','lainnya')">Lainnya</button>
-        <button class="btn btn-outline btn-sm" style="flex:1" onclick="unduhStrukPNG('${transaksiId}')">Unduh PNG</button>
-      </div>
-    `);
-    await gambarStrukKeCanvas(res.transaksi, res.iuran_info, 'struk-preview-area');
-  } catch (e) { showToast(e.message, 'error'); }
-}
-
-// ============================================================
-// GENERATE STRUK KASIR (Canvas) — gaya struk minimarket profesional
-// ============================================================
-const strukCanvasCache = {};
-
-async function gambarStrukKeCanvas(t, iuranInfo, containerId) {
-  const org = (JSON.parse(localStorage.getItem('kk_org_nama_cache') || 'null')) || { nama: 'Organisasi' };
-  const W = 320;
-  const scale = 3; // render resolusi tinggi lalu tampil diperkecil, biar tajam saat diunduh
-  const baris = [];
-
-  const masuk = t.tipe === 'masuk';
-  const judulBukti = t.tipe === 'masuk' ? 'BUKTI PEMASUKAN' : t.tipe === 'keluar' ? 'BUKTI PENGELUARAN' : t.tipe === 'transfer' ? 'BUKTI TRANSFER' : 'BUKTI PENYESUAIAN';
-  const warnaTotal = t.tipe === 'keluar' ? '#d9534f' : '#1b5e3a';
-  const tanda = t.tipe === 'keluar' ? '-' : t.tipe === 'masuk' ? '+' : '';
-
-  // Susun baris detail sesuai tipe transaksi
-  const detail = [];
-  if (iuranInfo) {
-    detail.push(['Anggota', iuranInfo.anggota_nama]);
-    detail.push(['No. HP', iuranInfo.anggota_no_hp || '-']);
-  } else {
-    detail.push(['Keterangan', t.keterangan || '-']);
-    if (t.kategori_nama) detail.push(['Kategori', t.kategori_nama]);
-  }
-  if (t.akun_nama) detail.push(['Akun', t.akun_nama]);
-  if (t.akun_asal_nama) detail.push(['Akun Asal', t.akun_asal_nama]);
-  if (t.akun_tujuan_nama) detail.push(['Akun Tujuan', t.akun_tujuan_nama]);
-  if (t.metode_pembayaran) detail.push(['Metode', t.metode_pembayaran]);
-
-  const tinggiDinamis = 340 + detail.length * 22;
-  const H = tinggiDinamis;
-
-  const canvas = document.createElement('canvas');
-  canvas.width = W * scale; canvas.height = H * scale;
-  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
-  canvas.style.borderRadius = '4px';
-  canvas.style.border = '1px solid #e5e7eb';
-  canvas.style.display = 'block';
-  canvas.style.margin = '0 auto';
-  const ctx = canvas.getContext('2d');
-  ctx.scale(scale, scale);
-  ctx.textBaseline = 'alphabetic';
-
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = '#111111';
-  ctx.font = '11px monospace';
-
-  let y = 24;
-  ctx.textAlign = 'center';
-  ctx.font = 'bold 15px monospace';
-  ctx.fillText('KAS KITA', W/2, y); y += 16;
-  ctx.font = '11px monospace';
-  ctx.fillStyle = '#555';
-  ctx.fillText(org.nama || 'Organisasi', W/2, y); y += 18;
-
-  ctx.strokeStyle = '#999'; ctx.setLineDash([2,2]);
-  ctx.beginPath(); ctx.moveTo(16, y); ctx.lineTo(W-16, y); ctx.stroke(); y += 16;
-
-  ctx.textAlign = 'left'; ctx.fillStyle = '#111';
-  const baris2Kolom = (label, value) => {
-    ctx.textAlign = 'left'; ctx.fillText(label, 16, y);
-    ctx.textAlign = 'right'; ctx.fillText(String(value), W-16, y);
-    y += 16;
-  };
-  baris2Kolom('No. Struk', t.no_referensi);
-  baris2Kolom('Tanggal', formatTanggal(t.tanggal));
-  baris2Kolom('Dicatat oleh', t.dicatat_oleh_nama || '-');
-
-  ctx.beginPath(); ctx.moveTo(16, y); ctx.lineTo(W-16, y); ctx.stroke(); y += 18;
-
-  ctx.textAlign = 'center'; ctx.font = 'bold 11px monospace';
-  ctx.fillText(judulBukti, W/2, y); y += 18;
-
-  ctx.font = '11px monospace';
-  for (const [label, value] of detail) baris2Kolom(label, value);
-
-  ctx.beginPath(); ctx.moveTo(16, y); ctx.lineTo(W-16, y); ctx.stroke(); y += 22;
-
-  ctx.textAlign = 'left'; ctx.font = 'bold 13px monospace'; ctx.fillStyle = '#111';
-  ctx.fillText('TOTAL', 16, y);
-  ctx.textAlign = 'right'; ctx.fillStyle = warnaTotal;
-  ctx.fillText(`${tanda}${formatRupiah(t.jumlah)}`, W-16, y); y += 20;
-
-  ctx.strokeStyle = '#999';
-  ctx.beginPath(); ctx.moveTo(16, y); ctx.lineTo(W-16, y); ctx.stroke(); y += 20;
-
-  // Barcode dekoratif
-  ctx.fillStyle = '#111';
-  let bx = W/2 - 60;
-  for (let i = 0; i < 40; i++) {
-    const w = Math.random() > 0.5 ? 2 : 1;
-    ctx.fillRect(bx, y, w, 26);
-    bx += w + 1;
-  }
-  y += 36;
-
-  ctx.setLineDash([]);
-  ctx.textAlign = 'center'; ctx.font = '9px monospace'; ctx.fillStyle = '#888';
-  ctx.fillText('Terima kasih - Simpan struk ini sebagai bukti sah', W/2, y);
-
-  const container = document.getElementById(containerId);
-  container.innerHTML = '';
-  container.appendChild(canvas);
-  strukCanvasCache[t.id] = canvas;
-  return canvas;
-}
-
-function canvasKeBlob(canvas) {
-  return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
-}
-
-async function unduhStrukPNG(transaksiId) {
-  const canvas = strukCanvasCache[transaksiId];
-  if (!canvas) return showToast('Struk belum siap', 'error');
-  const blob = await canvasKeBlob(canvas);
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `struk-${transaksiId}.png`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-async function bagikanStruk(transaksiId, tujuan) {
-  const canvas = strukCanvasCache[transaksiId];
-  if (!canvas) return showToast('Struk belum siap', 'error');
-  const blob = await canvasKeBlob(canvas);
-  const file = new File([blob], `struk-${transaksiId}.png`, { type: 'image/png' });
-
-  if (tujuan === 'lainnya' && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-    try { await navigator.share({ files: [file], title: 'Struk Kas Kita' }); } catch (e) { /* dibatalkan user */ }
+// ---------- KASIR (pakai Varian Menu) ----------
+async function renderKasir() {
+  STATE.varian = await api('/varian');
+  const konten = document.getElementById('konten');
+  if (!STATE.varian.length) {
+    konten.innerHTML = emptyState('Belum ada varian menu', 'Buat Bahan Baku → Master Resep → Varian Menu dulu di tab Racik.');
     return;
   }
-  // WhatsApp & Telegram tidak menerima file lewat URL scheme di web,
-  // jadi fallback: unduh dulu file-nya, lalu buka aplikasi tujuan untuk lampirkan manual.
-  await unduhStrukPNG(transaksiId);
-  if (tujuan === 'whatsapp') {
-    showToast('Struk diunduh. Buka WhatsApp lalu lampirkan gambarnya.', 'default');
-    window.open('https://wa.me/', '_blank');
-  } else if (tujuan === 'telegram') {
-    showToast('Struk diunduh. Buka Telegram lalu lampirkan gambarnya.', 'default');
-    window.open('https://t.me/', '_blank');
-  } else {
-    showToast('Struk berhasil diunduh', 'success');
+  konten.innerHTML = `<div class="produk-grid">${STATE.varian.map(kartuVarian).join('')}</div>`;
+  perbaruiBarKeranjang();
+}
+function kartuVarian(v) {
+  const habis = v.stok <= 0;
+  const rendah = v.stok > 0 && v.stok <= v.stok_minimum;
+  const qty = STATE.keranjang[v.id] || 0;
+  return `
+    <button class="produk-tile ${habis ? 'habis' : ''}" ${habis ? 'disabled' : ''} onclick="tambahKeranjang(${v.id})">
+      ${rendah ? '<div class="badge-stok-rendah"></div>' : ''}
+      <span class="stok">Stok ${v.stok}</span>
+      <span class="nama">${escapeHtml(v.nama)}</span>
+      <span class="harga">${rupiah(v.harga_jual)}</span>
+      ${qty ? `<span class="chip mustard" style="margin-top:8px;display:inline-block">${qty} di keranjang</span>` : ''}
+    </button>`;
+}
+function tambahKeranjang(id) {
+  const v = STATE.varian.find(x => x.id === id);
+  const dipakai = STATE.keranjang[id] || 0;
+  if (dipakai + 1 > v.stok) { toast('Stok tidak cukup'); return; }
+  STATE.keranjang[id] = dipakai + 1;
+  renderKasir();
+}
+function jumlahKeranjang() { return Object.values(STATE.keranjang).reduce((a, b) => a + b, 0); }
+function totalKeranjang() {
+  return Object.entries(STATE.keranjang).reduce((sum, [id, qty]) => {
+    const v = STATE.varian.find(x => x.id == id);
+    return sum + (v ? v.harga_jual * qty : 0);
+  }, 0);
+}
+function perbaruiBarKeranjang() {
+  const jumlah = jumlahKeranjang();
+  document.getElementById('bar-keranjang').classList.toggle('hidden', jumlah === 0);
+  document.getElementById('keranjang-jumlah').textContent = jumlah;
+  document.getElementById('keranjang-total').textContent = rupiah(totalKeranjang());
+}
+function bukaKeranjang() {
+  if (jumlahKeranjang() === 0) return;
+  const baris = Object.entries(STATE.keranjang).map(([id, qty]) => {
+    const v = STATE.varian.find(x => x.id == id);
+    return `<div class="list-row">
+      <div class="info"><b>${escapeHtml(v.nama)}</b><span>${rupiah(v.harga_jual)} × ${qty}</span></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="btn btn-sm btn-ghost" onclick="ubahQty(${id},-1)">−</button>
+        <span class="mono">${qty}</span>
+        <button class="btn btn-sm btn-ghost" onclick="ubahQty(${id},1)">+</button>
+      </div>
+    </div>`;
+  }).join('');
+  bukaSheet(`
+    <div class="sheet-handle"></div>
+    <div class="sheet-head"><h3>Keranjang</h3><button class="icon-btn" onclick="tutupSheet()">✕</button></div>
+    <div class="card">${baris}</div>
+    <div class="grid-2" style="margin-top:14px">
+      <div class="stat"><div class="label">Total item</div><div class="value">${jumlahKeranjang()}</div></div>
+      <div class="stat profit"><div class="label">Total bayar</div><div class="value">${rupiah(totalKeranjang())}</div></div>
+    </div>
+    <label>Metode bayar</label>
+    <select id="in-metode-bayar"><option>Tunai</option><option>QRIS</option><option>Transfer</option><option>Lainnya</option></select>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="kosongkanKeranjang()">Kosongkan</button>
+      <button class="btn btn-primary" onclick="prosesBayar()">Selesaikan</button>
+    </div>
+  `);
+}
+function ubahQty(id, delta) {
+  const v = STATE.varian.find(x => x.id == id);
+  let q = (STATE.keranjang[id] || 0) + delta;
+  if (q > v.stok) { toast('Stok tidak cukup'); return; }
+  if (q <= 0) delete STATE.keranjang[id]; else STATE.keranjang[id] = q;
+  if (jumlahKeranjang() === 0) tutupSheet(); else bukaKeranjang();
+  renderKasir();
+}
+function kosongkanKeranjang() { STATE.keranjang = {}; tutupSheet(); renderKasir(); }
+async function prosesBayar() {
+  const items = Object.entries(STATE.keranjang).map(([varian_id, qty]) => ({ varian_id: Number(varian_id), qty }));
+  const metode_bayar = document.getElementById('in-metode-bayar').value;
+  try {
+    const hasil = await api('/transaksi', { method: 'POST', body: JSON.stringify({ items, metode_bayar }) });
+    STATE.keranjang = {}; tutupSheet();
+    toast('Transaksi tersimpan · Profit ' + rupiah(hasil.total_profit));
+    await renderKasir();
+  } catch (e) { toast(e.message); }
+}
+
+// ========================================================
+// RACIK: 3 sub-tab -> Bahan Baku / Master Resep / Varian Menu
+// ========================================================
+async function renderRacik() {
+  const konten = document.getElementById('konten');
+  konten.innerHTML = `
+    <div class="subtabs">
+      <button data-sub="bahan" onclick="setSubRacik('bahan')">Bahan Baku</button>
+      <button data-sub="resep" onclick="setSubRacik('resep')">Master Resep</button>
+      <button data-sub="varian" onclick="setSubRacik('varian')">Varian Menu</button>
+    </div>
+    <div id="racik-konten"></div>`;
+  await tampilkanSubRacik();
+}
+function setSubRacik(sub) { STATE.subtabRacik = sub; tampilkanSubRacik(); }
+async function tampilkanSubRacik() {
+  document.querySelectorAll('.subtabs button').forEach(b => b.classList.toggle('aktif', b.dataset.sub === STATE.subtabRacik));
+  const el = document.getElementById('racik-konten');
+  if (STATE.subtabRacik === 'bahan') { STATE.bahan = await api('/bahan'); el.innerHTML = daftarBahan(); }
+  else if (STATE.subtabRacik === 'resep') { STATE.resep = await api('/resep'); el.innerHTML = daftarResep(); }
+  else { STATE.resep = await api('/resep'); STATE.varian = await api('/varian'); el.innerHTML = daftarVarian(); }
+}
+
+// ---------------- 1. MASTER BAHAN BAKU ----------------
+const LABEL_KATEGORI = { adonan: 'Bahan Adonan', topping: 'Topping', kemasan: 'Kemasan' };
+function daftarBahan() {
+  if (!STATE.bahan.length) return emptyState('Belum ada bahan baku', 'Tambahkan bahan pertama — bisa bahan adonan, topping, atau kemasan.') + tombolTambah('bahanFormBaru()');
+  const grup = { adonan: [], topping: [], kemasan: [] };
+  STATE.bahan.forEach(b => grup[b.kategori]?.push(b));
+  let html = '';
+  for (const kat of ['adonan', 'topping', 'kemasan']) {
+    if (!grup[kat].length) continue;
+    html += `<div class="section-title"><h2>${LABEL_KATEGORI[kat]}</h2></div><div class="card">` +
+      grup[kat].map(b => `
+        <div class="list-row">
+          <div class="info"><b>${escapeHtml(b.nama)}</b><span>${rupiah(b.harga_beli)} / ${b.isi_kemasan}${escapeHtml(b.satuan)} · ${rupiah(b.harga_per_satuan)}/${escapeHtml(b.satuan)}</span></div>
+          <button class="btn btn-sm btn-ghost" onclick="bahanFormEdit(${b.id})">Ubah</button>
+        </div>`).join('') + `</div>`;
+  }
+  return html + tombolTambah('bahanFormBaru()');
+}
+const SATUAN_KEMASAN = [
+  { label: 'Gram (g)', dasar: 'gr', kali: 1 },
+  { label: 'Kilogram (kg)', dasar: 'gr', kali: 1000 },
+  { label: 'Mililiter (ml)', dasar: 'ml', kali: 1 },
+  { label: 'Liter (l)', dasar: 'ml', kali: 1000 },
+  { label: 'Pcs / Butir', dasar: 'pcs', kali: 1 },
+];
+function opsiSatuanKemasan(satuanDasarTerpilih) {
+  return SATUAN_KEMASAN.map((s, i) => {
+    const cocok = satuanDasarTerpilih ? (s.dasar === satuanDasarTerpilih && s.kali === 1) : (i === 0);
+    return `<option value="${i}" ${cocok ? 'selected' : ''}>${s.label}</option>`;
+  }).join('');
+}
+function bahanFormBaru() { bahanForm(null); }
+function bahanFormEdit(id) { bahanForm(STATE.bahan.find(b => b.id === id)); }
+function bahanForm(b) {
+  bukaSheet(`
+    <div class="sheet-handle"></div>
+    <div class="sheet-head"><h3>${b ? 'Ubah' : 'Tambah'} Bahan Baku</h3><button class="icon-btn" onclick="tutupSheet()">✕</button></div>
+    <label>Nama bahan</label><input id="bf-nama" value="${b ? escapeAttr(b.nama) : ''}" placeholder="Contoh: Tepung Terigu Cakra Kembar">
+    <label>Kategori</label>
+    <select id="bf-kategori">
+      <option value="adonan" ${!b || b.kategori === 'adonan' ? 'selected' : ''}>Bahan Adonan</option>
+      <option value="topping" ${b && b.kategori === 'topping' ? 'selected' : ''}>Topping</option>
+      <option value="kemasan" ${b && b.kategori === 'kemasan' ? 'selected' : ''}>Kemasan</option>
+    </select>
+    <label>Ukuran kemasan yang dibeli</label>
+    <div class="grid-2">
+      <input id="bf-jumlah" type="number" value="${b ? b.isi_kemasan : ''}" placeholder="Contoh: 1" oninput="bahanPreview()">
+      <select id="bf-satuan-pilih" onchange="bahanPreview()">${opsiSatuanKemasan(b ? b.satuan : null)}</select>
+    </div>
+    <label>Harga beli per kemasan itu</label>
+    <input id="bf-harga-beli" type="number" value="${b ? b.harga_beli : ''}" placeholder="Contoh: 11000" oninput="bahanPreview()">
+    <div class="stat" style="margin-top:10px"><div class="label">Harga per satuan (otomatis)</div><div class="value" id="bf-preview">Rp 0</div></div>
+    <div class="grid-2" style="margin-top:12px">
+      <div><label>Stok (opsional)</label><input id="bf-stok" type="number" value="${b ? b.stok : 0}"></div>
+      <div><label>Stok minimum</label><input id="bf-stok-min" type="number" value="${b ? b.stok_minimum : 0}"></div>
+    </div>
+    <div class="form-err" id="bf-err"></div>
+    <div class="btn-row">
+      ${b ? `<button class="btn btn-danger" onclick="bahanHapus(${b.id})">Hapus</button>` : ''}
+      <button class="btn btn-primary" onclick="bahanSimpan(${b ? b.id : 'null'})">Simpan</button>
+    </div>
+  `);
+  bahanPreview();
+}
+function bahanKonversiSekarang() {
+  const opsi = SATUAN_KEMASAN[Number(document.getElementById('bf-satuan-pilih').value)];
+  const jumlah = Number(document.getElementById('bf-jumlah').value) || 0;
+  return { satuanDasar: opsi.dasar, isiDasar: jumlah * opsi.kali };
+}
+function bahanPreview() {
+  const hargaBeli = Number(document.getElementById('bf-harga-beli').value) || 0;
+  const { satuanDasar, isiDasar } = bahanKonversiSekarang();
+  const perSatuan = isiDasar > 0 ? hargaBeli / isiDasar : 0;
+  document.getElementById('bf-preview').textContent = rupiah(perSatuan) + ' / ' + satuanDasar;
+}
+async function bahanSimpan(id) {
+  const { satuanDasar, isiDasar } = bahanKonversiSekarang();
+  const payload = {
+    nama: document.getElementById('bf-nama').value.trim(),
+    kategori: document.getElementById('bf-kategori').value,
+    satuan: satuanDasar,
+    harga_beli: Number(document.getElementById('bf-harga-beli').value),
+    isi_kemasan: isiDasar || 1,
+    stok: Number(document.getElementById('bf-stok').value || 0),
+    stok_minimum: Number(document.getElementById('bf-stok-min').value || 0),
+  };
+  try {
+    if (id) await api('/bahan/' + id, { method: 'PUT', body: JSON.stringify(payload) });
+    else await api('/bahan', { method: 'POST', body: JSON.stringify(payload) });
+    tutupSheet(); toast('Bahan baku tersimpan'); await tampilkanSubRacik();
+  } catch (e) { document.getElementById('bf-err').textContent = e.message; }
+}
+async function bahanHapus(id) {
+  try { await api('/bahan/' + id, { method: 'DELETE' }); tutupSheet(); toast('Bahan dihapus'); await tampilkanSubRacik(); }
+  catch (e) { document.getElementById('bf-err').textContent = e.message; }
+}
+
+// ---------------- 2. MASTER RESEP ----------------
+function bahanAdonanSaja() { return STATE.bahan.filter(b => b.kategori === 'adonan'); }
+function daftarResep() {
+  if (!STATE.resep.length) return emptyState('Belum ada Master Resep', 'Susun resep dasar dari Bahan Adonan — HPP per gram terhitung otomatis.') + tombolTambah('resepFormBaru()');
+  return `<div class="card">${STATE.resep.map(r => `
+    <div class="list-row">
+      <div class="info"><b>${escapeHtml(r.nama)}</b><span>${r.total_berat}gr adonan ${r.harga_berubah ? '· <span style=\"color:var(--brick)\">⚠ harga bahan berubah</span>' : ''}</span></div>
+      <div style="text-align:right">
+        <div class="kanan">${rupiah(r.hpp_per_gram)}<span style="font-weight:400;color:var(--ink-soft);font-size:11px">/gr</span></div>
+        <button class="btn btn-sm btn-ghost" onclick="resepFormEdit(${r.id})">Ubah</button>
+      </div>
+    </div>`).join('')}</div>${tombolTambah('resepFormBaru()')}`;
+}
+let resepBahanBaris = [];
+function resepFormBaru() {
+  if (!bahanAdonanSaja().length) { toast('Tambahkan Bahan Adonan dulu di menu Bahan Baku'); return; }
+  resepBahanBaris = [{ bahan_id: '', qty: '' }];
+  resepForm(null);
+}
+async function resepFormEdit(id) {
+  const r = await api('/resep/' + id);
+  resepBahanBaris = r.bahan.map(b => ({ bahan_id: b.bahan_id, qty: b.qty }));
+  resepForm(r);
+}
+function opsiBahanAdonan(selectedId) {
+  return bahanAdonanSaja().map(b => `<option value="${b.id}" ${b.id == selectedId ? 'selected' : ''}>${escapeHtml(b.nama)} (${escapeHtml(b.satuan)})</option>`).join('');
+}
+function resepForm(r) {
+  bukaSheet(`
+    <div class="sheet-handle"></div>
+    <div class="sheet-head"><h3>${r ? 'Ubah' : 'Tambah'} Master Resep</h3><button class="icon-btn" onclick="tutupSheet()">✕</button></div>
+    <label>Nama Master Resep</label><input id="rf-nama" value="${r ? escapeAttr(r.nama) : ''}" placeholder="Contoh: Roti Maryam">
+    <label style="margin-top:16px">Bahan adonan</label>
+    <div id="rf-bahan-list"></div>
+    <button class="btn btn-sm btn-ghost" style="margin-top:4px" onclick="resepTambahBaris()">+ Tambah bahan</button>
+    <label style="margin-top:16px">Total berat adonan jadi (gram) — hasil timbangan asli</label>
+    <input id="rf-total-berat" type="number" value="${r ? r.total_berat : ''}" placeholder="Contoh: 1500" oninput="previewHpp()">
+    <div class="stat" style="margin-top:14px"><div class="label">Total biaya bahan</div><div class="value" id="rf-total-biaya">Rp 0</div></div>
+    <div class="stat" style="margin-top:10px"><div class="label">HPP per gram adonan</div><div class="value" id="rf-hpp-preview">Rp 0</div></div>
+    <div class="form-err" id="rf-err"></div>
+    <div class="btn-row">
+      ${r ? `<button class="btn btn-danger" onclick="resepHapus(${r.id})">Hapus</button>` : ''}
+      <button class="btn btn-primary" onclick="resepSimpan(${r ? r.id : 'null'})">Simpan</button>
+    </div>
+    ${r ? `<div class="btn-row"><button class="btn btn-ghost" onclick="resepHitungUlang(${r.id})">↻ Hitung ulang pakai harga terbaru</button></div>` : ''}
+  `);
+  renderBarisResep();
+}
+function renderBarisResep() {
+  const el = document.getElementById('rf-bahan-list');
+  el.innerHTML = resepBahanBaris.map((row, i) => `
+    <div class="bahan-row">
+      <select onchange="resepBahanBaris[${i}].bahan_id=this.value; previewHpp()">${'<option value="">Pilih bahan</option>' + opsiBahanAdonan(row.bahan_id)}</select>
+      <input type="number" placeholder="Jumlah pakai" value="${row.qty}" oninput="resepBahanBaris[${i}].qty=this.value; previewHpp()">
+      <button onclick="resepHapusBaris(${i})">✕</button>
+    </div>`).join('');
+  previewHpp();
+}
+function resepTambahBaris() { resepBahanBaris.push({ bahan_id: '', qty: '' }); renderBarisResep(); }
+function resepHapusBaris(i) { resepBahanBaris.splice(i, 1); renderBarisResep(); }
+function previewHpp() {
+  let total = 0;
+  for (const row of resepBahanBaris) {
+    const b = STATE.bahan.find(x => x.id == row.bahan_id);
+    if (b && row.qty) total += Number(row.qty) * b.harga_per_satuan;
+  }
+  const totalBerat = Number(document.getElementById('rf-total-berat')?.value) || 0;
+  document.getElementById('rf-total-biaya').textContent = rupiah(total);
+  const hppGram = totalBerat > 0 ? total / totalBerat : 0;
+  document.getElementById('rf-hpp-preview').textContent = rupiah(hppGram) + '/gr';
+}
+async function resepSimpan(id) {
+  const bahanValid = resepBahanBaris.filter(r => r.bahan_id && r.qty);
+  if (!bahanValid.length) { document.getElementById('rf-err').textContent = 'Isi minimal 1 bahan'; return; }
+  const payload = {
+    nama: document.getElementById('rf-nama').value.trim(),
+    total_berat: Number(document.getElementById('rf-total-berat').value),
+    bahan: bahanValid.map(r => ({ bahan_id: Number(r.bahan_id), qty: Number(r.qty) })),
+  };
+  try {
+    if (id) await api('/resep/' + id, { method: 'PUT', body: JSON.stringify(payload) });
+    else await api('/resep', { method: 'POST', body: JSON.stringify(payload) });
+    tutupSheet(); toast('Master Resep tersimpan'); await tampilkanSubRacik();
+  } catch (e) { document.getElementById('rf-err').textContent = e.message; }
+}
+async function resepHapus(id) {
+  try { await api('/resep/' + id, { method: 'DELETE' }); tutupSheet(); toast('Resep dihapus'); await tampilkanSubRacik(); }
+  catch (e) { document.getElementById('rf-err').textContent = e.message; }
+}
+async function resepHitungUlang(id) {
+  try {
+    const hasil = await api('/resep/' + id + '/hitung-ulang', { method: 'POST' });
+    toast('HPP resep diperbarui: ' + rupiah(hasil.hpp_per_gram) + '/gr');
+    tutupSheet(); await tampilkanSubRacik();
+  } catch (e) { toast(e.message); }
+}
+
+// ---------------- 3. VARIAN MENU ----------------
+function bahanToppingKemasan() { return STATE.bahan.filter(b => b.kategori === 'topping' || b.kategori === 'kemasan'); }
+function daftarVarian() {
+  if (!STATE.resep.length) return emptyState('Buat Master Resep dulu', 'Varian Menu diturunkan dari Master Resep yang sudah dibuat.');
+  if (!STATE.varian.length) return emptyState('Belum ada Varian Menu', 'Pilih Master Resep, tentukan berat & topping — HPP final terhitung otomatis.') + tombolTambah('varianFormBaru()');
+  return `<div class="card">${STATE.varian.map(v => `
+    <div class="list-row">
+      <div class="info"><b>${escapeHtml(v.nama)}</b><span>${escapeHtml(v.nama_resep)} · ${v.berat_gram}gr ${v.harga_berubah ? '· <span style=\"color:var(--brick)\">⚠ HPP berubah</span>' : ''}</span></div>
+      <div style="text-align:right">
+        <div class="kanan">${rupiah(v.harga_jual)}</div>
+        <button class="btn btn-sm btn-ghost" onclick="varianFormEdit(${v.id})">Ubah</button>
+      </div>
+    </div>`).join('')}</div>${tombolTambah('varianFormBaru()')}`;
+}
+let varianToppingBaris = [];
+function varianFormBaru() { varianToppingBaris = []; varianForm(null); }
+async function varianFormEdit(id) {
+  const v = await api('/varian/' + id);
+  varianToppingBaris = v.topping.map(t => ({ bahan_id: t.bahan_id, qty: t.qty }));
+  varianForm(v);
+}
+function opsiResepDropdown(selectedId) {
+  return STATE.resep.map(r => `<option value="${r.id}" ${r.id == selectedId ? 'selected' : ''}>${escapeHtml(r.nama)} (${rupiah(r.hpp_per_gram)}/gr)</option>`).join('');
+}
+function opsiBahanTopping(selectedId) {
+  return bahanToppingKemasan().map(b => `<option value="${b.id}" ${b.id == selectedId ? 'selected' : ''}>${escapeHtml(b.nama)} — ${LABEL_KATEGORI[b.kategori]} (${escapeHtml(b.satuan)})</option>`).join('');
+}
+function varianForm(v) {
+  bukaSheet(`
+    <div class="sheet-handle"></div>
+    <div class="sheet-head"><h3>${v ? 'Ubah' : 'Tambah'} Varian Menu</h3><button class="icon-btn" onclick="tutupSheet()">✕</button></div>
+    <label>Nama varian</label><input id="vf-nama" value="${v ? escapeAttr(v.nama) : ''}" placeholder="Contoh: Roti Maryam Coklat">
+    <label>Master Resep</label>
+    <select id="vf-resep" onchange="previewHppVarian()">${opsiResepDropdown(v ? v.resep_id : '')}</select>
+    <label>Berat adonan dipakai (gram)</label>
+    <input id="vf-berat" type="number" value="${v ? v.berat_gram : ''}" placeholder="Contoh: 75" oninput="previewHppVarian()">
+    <label style="margin-top:16px">Topping / Kemasan tambahan (opsional)</label>
+    <div id="vf-topping-list"></div>
+    <button class="btn btn-sm btn-ghost" style="margin-top:4px" onclick="varianTambahTopping()">+ Tambah topping/kemasan</button>
+    <div class="rincian-hpp card" style="margin-top:14px" id="vf-rincian"></div>
+    <label style="margin-top:16px">Harga jual</label>
+    <input id="vf-harga-jual" type="number" value="${v ? v.harga_jual : ''}" placeholder="0" oninput="previewHppVarian()">
+    <div class="stat" style="margin-top:10px" id="vf-margin-box"><div class="label">Margin</div><div class="value" id="vf-margin">0%</div></div>
+    ${!v ? `<label style="margin-top:12px">Stok awal</label><input id="vf-stok" type="number" value="0">` : ''}
+    <label style="margin-top:12px">Stok minimum (peringatan)</label><input id="vf-stok-min" type="number" value="${v ? v.stok_minimum : 0}">
+    <div class="form-err" id="vf-err"></div>
+    <div class="btn-row">
+      ${v ? `<button class="btn btn-danger" onclick="varianHapus(${v.id})">Nonaktifkan</button>` : ''}
+      <button class="btn btn-primary" onclick="varianSimpan(${v ? v.id : 'null'})">Simpan</button>
+    </div>
+    ${v ? `<div class="btn-row"><button class="btn btn-ghost" onclick="varianHitungUlang(${v.id})">↻ Hitung ulang HPP</button></div>
+    <div class="btn-row"><button class="btn btn-ghost" onclick="varianRestockForm(${v.id})">+ Restock stok</button></div>` : ''}
+  `);
+  renderBarisTopping();
+}
+function renderBarisTopping() {
+  const el = document.getElementById('vf-topping-list');
+  el.innerHTML = varianToppingBaris.map((row, i) => `
+    <div class="bahan-row">
+      <select onchange="varianToppingBaris[${i}].bahan_id=this.value; previewHppVarian()">${'<option value="">Pilih bahan</option>' + opsiBahanTopping(row.bahan_id)}</select>
+      <input type="number" placeholder="Qty" value="${row.qty}" oninput="varianToppingBaris[${i}].qty=this.value; previewHppVarian()">
+      <button onclick="varianHapusTopping(${i})">✕</button>
+    </div>`).join('');
+  previewHppVarian();
+}
+function varianTambahTopping() { varianToppingBaris.push({ bahan_id: '', qty: '' }); renderBarisTopping(); }
+function varianHapusTopping(i) { varianToppingBaris.splice(i, 1); renderBarisTopping(); }
+function previewHppVarian() {
+  const resepId = document.getElementById('vf-resep')?.value;
+  const resep = STATE.resep.find(r => r.id == resepId);
+  const berat = Number(document.getElementById('vf-berat')?.value) || 0;
+  const biayaAdonan = resep ? berat * resep.hpp_per_gram : 0;
+
+  let biayaTopping = 0;
+  const rincianTopping = [];
+  for (const row of varianToppingBaris) {
+    const b = STATE.bahan.find(x => x.id == row.bahan_id);
+    if (b && row.qty) {
+      const biaya = Number(row.qty) * b.harga_per_satuan;
+      biayaTopping += biaya;
+      rincianTopping.push({ nama: b.nama, biaya });
+    }
+  }
+  const hppFinal = biayaAdonan + biayaTopping;
+  const hargaJual = Number(document.getElementById('vf-harga-jual')?.value) || 0;
+  const margin = hargaJual > 0 ? ((hargaJual - hppFinal) / hargaJual) * 100 : 0;
+
+  const rincianEl = document.getElementById('vf-rincian');
+  if (rincianEl) {
+    rincianEl.innerHTML = `
+      <div class="baris"><span>Biaya adonan (${berat}gr)</span><span>${rupiah(biayaAdonan)}</span></div>
+      ${rincianTopping.map(t => `<div class="baris"><span>${escapeHtml(t.nama)}</span><span>${rupiah(t.biaya)}</span></div>`).join('')}
+      <div class="baris total"><span>HPP Final</span><span>${rupiah(hppFinal)}</span></div>
+    `;
+  }
+  const marginEl = document.getElementById('vf-margin');
+  if (marginEl) {
+    marginEl.textContent = margin.toFixed(1) + '%';
+    document.getElementById('vf-margin-box').className = 'stat ' + (margin < 0 ? 'warn' : 'profit');
   }
 }
-
-// ============================================================
-// HALAMAN: LAPORAN
-// ============================================================
-let laporanState = { tab: 'ringkasan', granularitas: 'mingguan', dari: null, sampai: null };
-
-function defaultRentangLaporan() {
-  const sekarang = new Date();
-  const awalBulan = new Date(sekarang.getFullYear(), sekarang.getMonth(), 1);
-  return { dari: awalBulan.toISOString().slice(0,10), sampai: sekarang.toISOString().slice(0,10) };
+async function varianSimpan(id) {
+  const toppingValid = varianToppingBaris.filter(r => r.bahan_id && r.qty);
+  const payload = {
+    nama: document.getElementById('vf-nama').value.trim(),
+    resep_id: Number(document.getElementById('vf-resep').value),
+    berat_gram: Number(document.getElementById('vf-berat').value),
+    topping: toppingValid.map(r => ({ bahan_id: Number(r.bahan_id), qty: Number(r.qty) })),
+    harga_jual: Number(document.getElementById('vf-harga-jual').value) || 0,
+    stok_minimum: Number(document.getElementById('vf-stok-min').value) || 0,
+  };
+  if (!id) payload.stok = Number(document.getElementById('vf-stok').value) || 0;
+  try {
+    if (id) await api('/varian/' + id, { method: 'PUT', body: JSON.stringify(payload) });
+    else await api('/varian', { method: 'POST', body: JSON.stringify(payload) });
+    tutupSheet(); toast('Varian tersimpan'); await tampilkanSubRacik();
+  } catch (e) { document.getElementById('vf-err').textContent = e.message; }
+}
+async function varianHapus(id) {
+  try { await api('/varian/' + id, { method: 'DELETE' }); tutupSheet(); toast('Varian dinonaktifkan'); await tampilkanSubRacik(); }
+  catch (e) { document.getElementById('vf-err').textContent = e.message; }
+}
+async function varianHitungUlang(id) {
+  try {
+    const hasil = await api('/varian/' + id + '/hitung-ulang', { method: 'POST' });
+    toast('HPP varian diperbarui: ' + rupiah(hasil.hpp_final));
+    tutupSheet(); await tampilkanSubRacik();
+  } catch (e) { toast(e.message); }
+}
+function varianRestockForm(id) {
+  bukaSheet(`
+    <div class="sheet-handle"></div>
+    <div class="sheet-head"><h3>Restock stok</h3><button class="icon-btn" onclick="tutupSheet()">✕</button></div>
+    <label>Jumlah masuk</label><input id="rs-qty" type="number" placeholder="0">
+    <label>Catatan (opsional)</label><input id="rs-catatan" placeholder="Contoh: Produksi pagi ini">
+    <div class="form-err" id="rs-err"></div>
+    <div class="btn-row"><button class="btn btn-primary" onclick="varianRestockSimpan(${id})">Simpan</button></div>
+  `);
+}
+async function varianRestockSimpan(id) {
+  try {
+    await api('/varian/' + id + '/restock', { method: 'POST', body: JSON.stringify({ qty: Number(document.getElementById('rs-qty').value), catatan: document.getElementById('rs-catatan').value }) });
+    tutupSheet(); toast('Stok diperbarui'); await tampilkanSubRacik();
+  } catch (e) { document.getElementById('rs-err').textContent = e.message; }
 }
 
+// ---------- LAPORAN ----------
 async function renderLaporan() {
-  if (!laporanState.dari) Object.assign(laporanState, defaultRentangLaporan());
-  const tabs = [
-    { key: 'ringkasan', label: 'Ringkasan', icon: '▦' },
-    { key: 'transaksi', label: 'Transaksi', icon: '⇄' },
-    { key: 'anggota', label: 'Anggota', icon: '👥' },
-    { key: 'akun', label: 'Akun', icon: '🏦' },
-  ];
-  return `
-  <div class="page">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
-      <div><h1 class="page-title">Laporan</h1><p class="page-subtitle">Ringkasan keuangan & perkembangan organisasi</p></div>
+  const konten = document.getElementById('konten');
+  konten.innerHTML = `
+    <div class="subtabs">
+      <button class="${STATE.periodeLaporan===7?'aktif':''}" onclick="gantiPeriodeLaporan(7)">7 Hari</button>
+      <button class="${STATE.periodeLaporan===30?'aktif':''}" onclick="gantiPeriodeLaporan(30)">30 Hari</button>
+      <button class="${STATE.periodeLaporan===90?'aktif':''}" onclick="gantiPeriodeLaporan(90)">90 Hari</button>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:14px">
-      <button class="btn btn-outline btn-sm" style="flex:1" onclick="unduhLaporanPDF()">⬇ Download PDF</button>
-      <button class="btn btn-outline btn-sm" style="flex:1" onclick="bagikanLaporan()">🔗 Bagikan</button>
-    </div>
-
-    <div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:14px;padding-bottom:4px">
-      ${tabs.map(t => `<button onclick="gantiTabLaporan('${t.key}')" class="btn btn-sm ${laporanState.tab===t.key?'btn-primary':'btn-outline'}" style="flex-shrink:0">${t.icon} ${t.label}</button>`).join('')}
-    </div>
-
-    <div class="card" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <input type="date" id="laporan-dari" value="${laporanState.dari}" style="border:1px solid var(--border);border-radius:8px;padding:8px;flex:1;min-width:120px" />
-      <span style="color:var(--abu)">s/d</span>
-      <input type="date" id="laporan-sampai" value="${laporanState.sampai}" style="border:1px solid var(--border);border-radius:8px;padding:8px;flex:1;min-width:120px" />
-      <button class="btn btn-primary btn-sm" onclick="terapkanFilterLaporan()">Terapkan</button>
-    </div>
-
-    <div id="laporan-tab-content">${await renderTabLaporan(laporanState.tab)}</div>
-  </div>`;
+    <div id="laporan-konten"></div>`;
+  await muatLaporan();
 }
-
-function gantiTabLaporan(key) { laporanState.tab = key; router(); }
-function terapkanFilterLaporan() {
-  laporanState.dari = document.getElementById('laporan-dari').value;
-  laporanState.sampai = document.getElementById('laporan-sampai').value;
-  router();
-}
-
-async function renderTabLaporan(tab) {
-  if (tab === 'ringkasan') return await renderLaporanRingkasan();
-  if (tab === 'transaksi') return await renderLaporanTransaksi();
-  if (tab === 'anggota') return await renderLaporanAnggota();
-  if (tab === 'akun') return await renderLaporanAkun();
-  return '';
-}
-
-async function renderLaporanRingkasan() {
-  const q = `dari=${laporanState.dari}&sampai=${laporanState.sampai}&granularitas=${laporanState.granularitas}`;
-  const res = await api(`/api/laporan/ringkasan?${q}`);
-  const totalGabungan = (res.total_pemasukan||0) + (res.total_pengeluaran||0);
-  const persenMasuk = totalGabungan > 0 ? Math.round((res.total_pemasukan/totalGabungan)*100) : 0;
-  const persenKeluar = 100 - persenMasuk;
-
-  return `
+function gantiPeriodeLaporan(n) { STATE.periodeLaporan = n; renderLaporan(); }
+async function muatLaporan() {
+  const selesai = new Date();
+  const mulai = new Date(); mulai.setDate(mulai.getDate() - (STATE.periodeLaporan - 1));
+  const fmt = d => d.toISOString().slice(0, 10);
+  const L = await api(`/laporan?mulai=${fmt(mulai)}&selesai=${fmt(selesai)}`);
+  STATE.laporan = L;
+  const maxOmzet = Math.max(1, ...L.tren_harian.map(t => t.omzet));
+  const grafik = L.tren_harian.map(t => `
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1">
+      <div style="width:100%;background:var(--teal-tint);border-radius:4px 4px 0 0;height:64px;display:flex;align-items:flex-end">
+        <div style="width:100%;background:var(--teal);border-radius:4px 4px 0 0;height:${Math.max(4,(t.omzet/maxOmzet)*64)}px"></div>
+      </div>
+      <span style="font-size:9.5px;color:var(--ink-soft)">${t.tanggal.slice(8,10)}/${t.tanggal.slice(5,7)}</span>
+    </div>`).join('');
+  document.getElementById('laporan-konten').innerHTML = `
+    <div class="grid-2">
+      <div class="stat"><div class="label">Omzet</div><div class="value">${rupiah(L.omzet)}</div></div>
+      <div class="stat profit"><div class="label">Profit</div><div class="value">${rupiah(L.profit)}</div></div>
+      <div class="stat"><div class="label">HPP</div><div class="value">${rupiah(L.hpp)}</div></div>
+      <div class="stat"><div class="label">Margin</div><div class="value">${L.margin_persen}%</div></div>
+    </div>
+    <div class="section-title"><h2>Tren omzet</h2><span class="hint">${L.jumlah_transaksi} transaksi</span></div>
+    <div class="card">${L.tren_harian.length ? `<div style="display:flex;gap:6px;align-items:flex-end">${grafik}</div>` : '<p style="color:var(--ink-soft);margin:0;font-size:13.5px">Belum ada transaksi di periode ini.</p>'}</div>
+    <div class="section-title"><h2>Varian terlaris</h2></div>
     <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-        <span style="font-size:12px;color:var(--abu)">↓ Total Pemasukan</span>
-        <span class="badge ${res.growth.pemasukan>=0?'badge-hijau':'badge-merah'}">${res.growth.pemasukan>=0?'↑':'↓'} ${Math.abs(res.growth.pemasukan)}%</span>
-      </div>
-      <p style="font-size:22px;font-weight:800;color:var(--hijau-tua);margin-bottom:14px">${formatRupiah(res.total_pemasukan)}</p>
+      ${L.produk_terlaris.length ? L.produk_terlaris.map(p => `
+        <div class="list-row"><div class="info"><b>${escapeHtml(p.nama_varian)}</b><span>${p.qty_terjual} terjual</span></div><div class="kanan">${rupiah(p.omzet)}</div></div>`).join('') : '<p style="color:var(--ink-soft);margin:0;font-size:13.5px">Belum ada data.</p>'}
+    </div>`;
+}
 
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-        <span style="font-size:12px;color:var(--abu)">↑ Total Pengeluaran</span>
-        <span class="badge ${res.growth.pengeluaran<=0?'badge-hijau':'badge-merah'}">${res.growth.pengeluaran>=0?'↑':'↓'} ${Math.abs(res.growth.pengeluaran)}%</span>
-      </div>
-      <p style="font-size:22px;font-weight:800;color:var(--merah);margin-bottom:14px">${formatRupiah(res.total_pengeluaran)}</p>
-
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-        <span style="font-size:12px;color:var(--abu)">💰 Saldo Akhir</span>
-        <span class="badge ${res.growth.saldo>=0?'badge-hijau':'badge-merah'}">${res.growth.saldo>=0?'↑':'↓'} ${Math.abs(res.growth.saldo)}%</span>
-      </div>
-      <p style="font-size:22px;font-weight:800">${formatRupiah(res.saldo_akhir)}</p>
-    </div>
-
+// ---------- PROFIL ----------
+function renderProfil() {
+  const konten = document.getElementById('konten');
+  konten.innerHTML = `
+    <div class="card"><div class="list-row"><div class="info"><b>${escapeHtml(USER.nama_usaha)}</b><span>${escapeHtml(USER.email)}</span></div></div></div>
+    <div class="section-title"><h2>Tampilan</h2></div>
+    <div class="card"><div class="switch-row"><span>Mode gelap</span>
+      <label class="switch"><input type="checkbox" ${TEMA === 'gelap' ? 'checked' : ''} onchange="ubahTema(this.checked)"><span class="track"></span></label>
+    </div></div>
+    <div class="section-title"><h2>Data</h2></div>
     <div class="card">
-      <p style="font-weight:700;margin-bottom:12px">Rincian Transaksi</p>
-      <div style="display:flex;align-items:center;justify-content:center;margin-bottom:12px">
-        <svg width="140" height="140" viewBox="0 0 42 42">
-          <circle cx="21" cy="21" r="15.9" fill="none" stroke="#fdeceb" stroke-width="6"></circle>
-          <circle cx="21" cy="21" r="15.9" fill="none" stroke="#1b5e3a" stroke-width="6"
-            stroke-dasharray="${persenMasuk} ${100-persenMasuk}" stroke-dashoffset="25" transform="rotate(-90 21 21)"></circle>
-        </svg>
-      </div>
-      <div style="display:flex;justify-content:space-around;text-align:center;font-size:13px">
-        <div><span style="display:inline-block;width:8px;height:8px;background:var(--hijau-tua);border-radius:50%;margin-right:4px"></span>Pemasukan ${persenMasuk}%</div>
-        <div><span style="display:inline-block;width:8px;height:8px;background:var(--merah);border-radius:50%;margin-right:4px"></span>Pengeluaran ${persenKeluar}%</div>
-      </div>
+      <button class="btn btn-ghost" onclick="unduhBackup()">Unduh cadangan data (JSON)</button>
+      <div class="btn-row"><button class="btn btn-danger" onclick="konfirmasiReset()">Reset semua data</button></div>
     </div>
-
-    ${res.rincian_kategori_pengeluaran.length > 0 ? `<div class="card">
-      <p style="font-weight:700;margin-bottom:12px">Pengeluaran Paling Sering</p>
-      ${res.rincian_kategori_pengeluaran.map(k => {
-        const persen = res.total_pengeluaran > 0 ? Math.round((k.total/res.total_pengeluaran)*100) : 0;
-        return `<div style="margin-bottom:10px">
-          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span>${escapeHtml(k.nama)}</span><span style="font-weight:700">${formatRupiah(k.total)}</span></div>
-          <div style="background:var(--krem);border-radius:4px;height:6px"><div style="background:var(--hijau-aksen);height:6px;border-radius:4px;width:${persen}%"></div></div>
-        </div>`;
-      }).join('')}
-    </div>` : ''}
-  `;
+    <div class="btn-row"><button class="btn btn-ghost" onclick="keluar()">Keluar</button></div>`;
 }
-
-async function renderLaporanTransaksi() {
-  const res = await api(`/api/laporan/transaksi?dari=${laporanState.dari}&sampai=${laporanState.sampai}`);
-  if ((res.transaksi||[]).length === 0) return `<div class="card"><p style="text-align:center;color:var(--abu);font-size:13px">Tidak ada transaksi di periode ini</p></div>`;
-  return `<div class="card">${res.transaksi.map(t => renderItemTransaksi(t)).join('')}</div>`;
+function ubahTema(gelap) {
+  TEMA = gelap ? 'gelap' : 'terang';
+  document.documentElement.setAttribute('data-theme', TEMA);
+  localStorage.setItem('kh_tema', TEMA);
 }
-
-async function renderLaporanAnggota() {
-  const res = await api('/api/laporan/anggota');
-  return `
-    <div class="card">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-        <div style="background:var(--hijau-muda);border-radius:10px;padding:12px"><p style="font-size:12px;color:var(--abu)">✓ Sudah Bayar</p><p style="font-size:18px;font-weight:800;color:var(--hijau-tua)">${res.ringkasan.sudah_bayar} Orang</p></div>
-        <div style="background:var(--merah-muda);border-radius:10px;padding:12px"><p style="font-size:12px;color:var(--abu)">! Belum Bayar</p><p style="font-size:18px;font-weight:800;color:var(--merah)">${res.ringkasan.belum_bayar} Orang</p></div>
-      </div>
-    </div>
-    <div class="card">${(res.detail||[]).map(a => renderCardAnggota(a)).join('')}</div>
-  `;
+async function unduhBackup() {
+  const data = await api('/backup');
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'cadangan-kasir-hpp-' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click();
 }
-
-async function renderLaporanAkun() {
-  const res = await api('/api/laporan/akun');
-  return `<div class="card">${(res.akun||[]).map(a => `<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--krem)">
-    <div><p style="font-weight:600">${escapeHtml(a.nama)}</p><p style="font-size:12px;color:var(--abu)">${a.jenis}</p></div>
-    <p style="font-weight:700">${formatRupiah(a.saldo)}</p>
-  </div>`).join('')}</div>`;
+function konfirmasiReset() {
+  bukaSheet(`
+    <div class="sheet-handle"></div>
+    <div class="sheet-head"><h3>Reset semua data</h3><button class="icon-btn" onclick="tutupSheet()">✕</button></div>
+    <p style="color:var(--brick);font-size:13.5px">Semua bahan baku, resep, varian, dan riwayat transaksi akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.</p>
+    <label>Masukkan password untuk konfirmasi</label>
+    <input id="reset-pass" type="password">
+    <div class="form-err" id="reset-err"></div>
+    <div class="btn-row"><button class="btn btn-danger" onclick="jalankanReset()">Ya, hapus semua data</button></div>
+  `);
 }
-
-function after_renderLaporan() {}
-
-// ---------- Generate Laporan PDF/Print (window.print dengan layout formal) ----------
-async function unduhLaporanPDF() {
-  showToast('Menyiapkan laporan...', 'default');
+async function jalankanReset() {
   try {
-    const [ringkasan, anggotaRes, transaksiRes] = await Promise.all([
-      api(`/api/laporan/ringkasan?dari=${laporanState.dari}&sampai=${laporanState.sampai}&granularitas=bulanan`),
-      api('/api/laporan/anggota'),
-      api(`/api/laporan/transaksi?dari=${laporanState.dari}&sampai=${laporanState.sampai}`),
-    ]);
-    const orgCache = JSON.parse(localStorage.getItem('kk_org_nama_cache') || '{"nama":"Organisasi"}');
-    const win = window.open('', '_blank');
-    win.document.write(bangunHtmlLaporanFormal(orgCache.nama, ringkasan, anggotaRes, transaksiRes));
-    win.document.close();
-    setTimeout(() => win.print(), 400);
-  } catch (e) { showToast(e.message, 'error'); }
+    await api('/reset', { method: 'POST', body: JSON.stringify({ password: document.getElementById('reset-pass').value }) });
+    tutupSheet(); toast('Semua data telah direset'); await muatSemuaData(); pindahTab('beranda');
+  } catch (e) { document.getElementById('reset-err').textContent = e.message; }
 }
 
-function bangunHtmlLaporanFormal(namaOrg, ringkasan, anggotaRes, transaksiRes) {
-  const tanggalCetak = new Date().toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' });
-  return `<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><title>Laporan Keuangan - ${escapeHtml(namaOrg)}</title>
-  <style>
-    body { font-family: Georgia, 'Times New Roman', serif; padding: 40px; color: #1f2937; max-width: 720px; margin: 0 auto; }
-    h1 { text-align:center; font-size: 22px; margin-bottom:2px; border-bottom: 2px solid #111; padding-bottom:12px; }
-    .subjudul { text-align:center; color:#555; font-size:13px; margin-bottom: 24px; }
-    h2 { font-size:15px; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid #ccc; padding-bottom:4px; margin-top:26px; }
-    table { width:100%; border-collapse:collapse; font-size:13px; margin-top:8px; }
-    td { padding: 5px 0; }
-    td.kanan { text-align:right; }
-    tr.total td { border-top: 1px solid #333; font-weight:bold; padding-top:8px; }
-    .footer { margin-top:40px; display:flex; justify-content:space-between; font-size:11px; color:#888; border-top:1px solid #ccc; padding-top:10px; }
-    @media print { body { padding: 20px; } }
-  </style></head><body>
-    <h1>LAPORAN KEUANGAN</h1>
-    <p class="subjudul">${escapeHtml(namaOrg)} &middot; Periode ${formatTanggal(laporanState.dari)} - ${formatTanggal(laporanState.sampai)}</p>
+// ---------- Sheet / util UI ----------
+function bukaSheet(html) { document.getElementById('sheet-konten').innerHTML = html; document.getElementById('overlay').classList.add('terbuka'); }
+function tutupSheet() { document.getElementById('overlay').classList.remove('terbuka'); }
+function tombolTambah(fn) { return `<div class="btn-row"><button class="btn btn-primary" onclick="${fn}">+ Tambah</button></div>`; }
+function emptyState(judul, sub) {
+  return `<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M9 10h.01M15 10h.01M8 15c1.2 1 2.6 1.5 4 1.5s2.8-.5 4-1.5"/></svg><div style="font-weight:600;color:var(--ink);margin-bottom:4px">${judul}</div><div style="font-size:13px">${sub}</div></div>`;
+}
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(s) { return escapeHtml(s); }
 
-    <h2>I. Ringkasan Umum</h2>
-    <table>
-      <tr><td>Total Pemasukan</td><td class="kanan">${formatRupiah(ringkasan.total_pemasukan)}</td></tr>
-      <tr><td>Total Pengeluaran</td><td class="kanan">${formatRupiah(ringkasan.total_pengeluaran)}</td></tr>
-      <tr class="total"><td>Saldo Akhir</td><td class="kanan">${formatRupiah(ringkasan.saldo_akhir)}</td></tr>
-    </table>
-
-    <h2>II. Rincian Pengeluaran per Kategori</h2>
-    <table>
-      ${ringkasan.rincian_kategori_pengeluaran.map(k => `<tr><td>${escapeHtml(k.nama)}</td><td class="kanan">${formatRupiah(k.total)}</td></tr>`).join('') || '<tr><td colspan="2">Tidak ada data</td></tr>'}
-    </table>
-
-    <h2>III. Status Iuran Anggota</h2>
-    <table>
-      <tr><td>Lunas</td><td class="kanan">${anggotaRes.ringkasan.sudah_bayar} orang</td></tr>
-      <tr><td>Menunggak</td><td class="kanan">${anggotaRes.ringkasan.belum_bayar} orang</td></tr>
-    </table>
-
-    <h2>IV. Daftar Transaksi</h2>
-    <table>
-      <tr style="font-weight:bold;border-bottom:1px solid #333"><td>Tanggal</td><td>Keterangan</td><td class="kanan">Jumlah</td></tr>
-      ${(transaksiRes.transaksi||[]).map(t => `<tr><td>${formatTanggal(t.tanggal)}</td><td>${escapeHtml(t.keterangan||t.kategori_nama||'-')}</td><td class="kanan">${t.tipe==='keluar'?'-':'+'}${formatRupiah(t.jumlah)}</td></tr>`).join('') || '<tr><td colspan="3">Tidak ada transaksi</td></tr>'}
-    </table>
-
-    <div class="footer"><span>Dicetak ${tanggalCetak}</span><span>Kas Kita</span></div>
-  </body></html>`;
+// ---------- PWA ----------
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 }
 
-async function bagikanLaporan() {
-  const orgCache = JSON.parse(localStorage.getItem('kk_org_nama_cache') || '{"nama":"Organisasi"}');
-  const teks = `Laporan Keuangan ${orgCache.nama}\nPeriode ${formatTanggal(laporanState.dari)} - ${formatTanggal(laporanState.sampai)}`;
-  if (navigator.share) {
-    try { await navigator.share({ title: 'Laporan Keuangan', text: teks }); } catch (e) {}
-  } else {
-    await navigator.clipboard.writeText(teks);
-    showToast('Ringkasan laporan disalin ke clipboard', 'success');
-  }
-}
-
-// ============================================================
-// HALAMAN: PROFIL
-// ============================================================
-async function renderProfil() {
-  const orgIdSebelum = Store.orgId;
-  const profilRes = await api('/api/profil', { skipOrg: !orgIdSebelum });
-  const u = profilRes.user;
-  const jabatan = profilRes.jabatan || 'Anggota';
-  let orgAktif = null;
-  try {
-    const orgsRes = await api('/api/organizations', { skipOrg: true });
-    orgAktif = (orgsRes.organizations || []).find(o => o.id === Store.orgId);
-  } catch (e) {}
-
-  return `
-  <div class="page">
-    <div class="page-header"><h1 class="page-title">Profil</h1><p class="page-subtitle">Kelola informasi akun dan pengaturan aplikasi</p></div>
-
-    <div class="card">
-      <div style="display:flex;gap:12px;align-items:center">
-        <div style="width:64px;height:64px;border-radius:50%;background:var(--hijau-muda);display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:24px;font-weight:700;color:var(--hijau-tua);flex-shrink:0">
-          ${(u.nama||'?').slice(0,1).toUpperCase()}
-        </div>
-        <div>
-          <p style="font-weight:800;font-size:17px">${escapeHtml(u.nama)}</p>
-          <span class="badge badge-hijau">🏆 ${escapeHtml(jabatan)}</span>
-        </div>
-      </div>
-      ${orgAktif ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--krem);font-size:13px">
-        <p>🏢 ${escapeHtml(orgAktif.nama)}</p>
-        <p style="color:var(--abu);margin-top:4px">Kode ID: <span style="font-family:monospace">${escapeHtml(orgAktif.kode_id)}</span>
-          <button onclick="navigator.clipboard.writeText('${orgAktif.kode_id}');showToast('Kode disalin','success')" style="background:none;border:none;color:var(--hijau-tua);font-weight:600">Salin</button>
-        </p>
-      </div>` : ''}
-    </div>
-
-    <div class="card">
-      <p style="font-weight:700;margin-bottom:10px">Informasi Akun</p>
-      ${renderBarisProfil('Edit Nama', u.nama, () => bukaEditNama())}
-      ${renderBarisProfil('Edit Jabatan', jabatan, () => bukaEditJabatan())}
-      ${renderBarisProfil('Ganti Email', u.email, () => bukaGantiEmail())}
-      ${renderBarisProfil('Ganti Password', '', () => bukaGantiPassword())}
-    </div>
-
-    <div class="card">
-      <p style="font-weight:700;margin-bottom:10px">Organisasi</p>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-outline btn-sm" style="flex:1" onclick="bukaFormBuatOrganisasiDariProfil()">+ Tambah Organisasi</button>
-        <button class="btn btn-outline btn-sm" style="flex:1" onclick="gantiOrganisasiDariProfil()">⇄ Ganti Organisasi</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <p style="font-weight:700;margin-bottom:10px">Pengaturan Aplikasi</p>
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--krem)">
-        <span>🌙 Tema Gelap</span>
-        <label style="position:relative;display:inline-block;width:42px;height:24px">
-          <input type="checkbox" id="toggle-tema" ${u.tema==='gelap'?'checked':''} style="opacity:0;width:0;height:0" />
-          <span onclick="toggleTemaProfil()" style="position:absolute;inset:0;background:${u.tema==='gelap'?'var(--hijau-tua)':'#ccc'};border-radius:999px;cursor:pointer"></span>
-        </label>
-      </div>
-      ${renderBarisProfil('Bantuan & Panduan', '', () => bukaBantuan())}
-      ${renderBarisProfil('Tentang Aplikasi', 'v1.0.0', () => bukaTentang())}
-      <button class="btn btn-danger-outline" style="margin-top:10px" onclick="konfirmasiLogout()">🚪 Keluar Akun</button>
-    </div>
-  </div>`;
-}
-
-function renderBarisProfil(label, value, onClick) {
-  const id = 'baris-' + Math.random().toString(36).slice(2,8);
-  setTimeout(() => { const el = document.getElementById(id); if (el) el.addEventListener('click', onClick); }, 0);
-  return `<div id="${id}" style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--krem);cursor:pointer">
-    <span>${escapeHtml(label)}</span>
-    <span style="color:var(--hijau-tua);font-size:13px">${escapeHtml(value)} ›</span>
-  </div>`;
-}
-
-function bukaEditNama() {
-  openSheet('Edit Nama', `
-    <div class="field"><input type="text" id="en-nama" value="${escapeHtml(Store.user.nama)}" /></div>
-    <button class="btn btn-primary" onclick="simpanEditNama()">Simpan</button>
-  `);
-}
-async function simpanEditNama() {
-  try {
-    const nama = document.getElementById('en-nama').value.trim();
-    await api('/api/profil', { method: 'PUT', body: { nama } });
-    const u = Store.user; u.nama = nama; Store.user = u;
-    closeSheet(); showToast('Nama berhasil diperbarui', 'success'); router();
-  } catch (e) { showToast(e.message, 'error'); }
-}
-
-function bukaEditJabatan() {
-  openSheet('Edit Jabatan', `
-    <div class="field"><label>Jabatan (label tampilan saja)</label>
-      <select id="ej-jabatan">
-        <option>Ketua Organisasi</option><option>Wakil Ketua</option><option>Bendahara</option><option>Sekretaris</option><option>Anggota</option>
-      </select>
-    </div>
-    <button class="btn btn-primary" onclick="simpanEditJabatan()">Simpan</button>
-  `);
-}
-async function simpanEditJabatan() {
-  try {
-    await api('/api/profil/jabatan', { method: 'PUT', body: { jabatan: document.getElementById('ej-jabatan').value } });
-    closeSheet(); showToast('Jabatan berhasil diperbarui', 'success'); router();
-  } catch (e) { showToast(e.message, 'error'); }
-}
-
-function bukaGantiEmail() {
-  openSheet('Ganti Email', `
-    <div class="field"><label>Email Baru</label><input type="email" id="ge-email" /></div>
-    <div class="field"><label>Password (konfirmasi)</label><input type="password" id="ge-password" /></div>
-    <div id="ge-error" class="error-text hidden"></div>
-    <button class="btn btn-primary" onclick="simpanGantiEmail()">Simpan</button>
-  `);
-}
-async function simpanGantiEmail() {
-  const errEl = document.getElementById('ge-error');
-  try {
-    await api('/api/profil/email', { method: 'PUT', body: {
-      email_baru: document.getElementById('ge-email').value.trim(),
-      password: document.getElementById('ge-password').value,
-    }});
-    closeSheet(); showToast('Email berhasil diubah', 'success'); router();
-  } catch (e) { errEl.textContent = e.message; errEl.classList.remove('hidden'); }
-}
-
-function bukaGantiPassword() {
-  openSheet('Ganti Password', `
-    <div class="field"><label>Password Lama</label><input type="password" id="gp-lama" /></div>
-    <div class="field"><label>Password Baru</label><input type="password" id="gp-baru" minlength="6" /></div>
-    <div id="gp-error" class="error-text hidden"></div>
-    <button class="btn btn-primary" onclick="simpanGantiPassword()">Simpan</button>
-  `);
-}
-async function simpanGantiPassword() {
-  const errEl = document.getElementById('gp-error');
-  try {
-    await api('/api/profil/password', { method: 'PUT', body: {
-      password_lama: document.getElementById('gp-lama').value,
-      password_baru: document.getElementById('gp-baru').value,
-    }});
-    closeSheet(); showToast('Password berhasil diubah', 'success');
-  } catch (e) { errEl.textContent = e.message; errEl.classList.remove('hidden'); }
-}
-
-async function toggleTemaProfil() {
-  const baru = Store.user && Store.user.tema === 'gelap' ? 'terang' : 'gelap';
-  try {
-    await api('/api/profil', { method: 'PUT', body: { tema: baru } });
-    const u = Store.user; u.tema = baru; Store.user = u;
-    router();
-  } catch (e) { showToast(e.message, 'error'); }
-}
-
-function bukaFormBuatOrganisasiDariProfil() { bukaFormBuatOrganisasi(); }
-async function gantiOrganisasiDariProfil() {
-  const res = await api('/api/organizations', { skipOrg: true });
-  openSheet('Ganti Organisasi', `
-    ${(res.organizations||[]).map(o => `<button class="btn btn-outline" style="margin-bottom:8px;justify-content:space-between" onclick="pilihOrganisasiDariSheet('${o.id}')">
-      <span>${escapeHtml(o.nama)}</span>${o.id===Store.orgId?'<span>✓</span>':''}
-    </button>`).join('')}
-    <button class="btn btn-outline" onclick="closeSheet(); bukaFormGabungOrganisasi()">🔗 Gabung Organisasi Lain</button>
-  `);
-}
-function pilihOrganisasiDariSheet(orgId) { Store.orgId = orgId; closeSheet(); goTo('/beranda'); }
-
-function bukaBantuan() {
-  openSheet('Bantuan & Panduan', `
-    <details style="margin-bottom:10px"><summary style="font-weight:600;cursor:pointer">Cara mencatat iuran anggota?</summary><p style="font-size:13px;color:var(--abu);margin-top:6px">Buka tab Catat → pilih Iuran Anggota → pilih nama anggota → isi jumlah → Simpan.</p></details>
-    <details style="margin-bottom:10px"><summary style="font-weight:600;cursor:pointer">Cara menambah anggota baru?</summary><p style="font-size:13px;color:var(--abu);margin-top:6px">Buka halaman Anggota → tombol Tambah Anggota di kanan atas.</p></details>
-    <details style="margin-bottom:10px"><summary style="font-weight:600;cursor:pointer">Bagaimana cara kerja alokasi iuran?</summary><p style="font-size:13px;color:var(--abu);margin-top:6px">Setiap pembayaran otomatis dialokasikan ke bulan tertunggak paling lama dulu (FIFO), sisa lebih akan dianggap bayar di muka.</p></details>
-    <details><summary style="font-weight:600;cursor:pointer">Cara mengunduh laporan PDF?</summary><p style="font-size:13px;color:var(--abu);margin-top:6px">Buka halaman Laporan → tombol Download PDF di bagian atas.</p></details>
-  `);
-}
-function bukaTentang() {
-  openSheet('Tentang Aplikasi', `
-    <p style="font-size:14px;font-weight:700">Kas Kita</p>
-    <p style="font-size:13px;color:var(--abu);margin:6px 0">Versi 1.0.0</p>
-    <p style="font-size:13px;color:var(--abu)">Aplikasi pengelolaan keuangan organisasi — transparan, mudah, dan bisa dipantau kapan saja.</p>
-  `);
-}
-function konfirmasiLogout() {
-  openSheet('Keluar Akun?', `
-    <p style="font-size:14px;margin-bottom:16px">Yakin ingin keluar dari akun ini?</p>
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-outline" onclick="closeSheet()">Batal</button>
-      <button class="btn" style="background:var(--merah);color:#fff" onclick="logout()">Ya, Keluar</button>
-    </div>
-  `);
-}
+boot();
 </script>
 </body>
 </html>
